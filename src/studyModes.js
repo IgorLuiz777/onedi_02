@@ -5,13 +5,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Prompts específicos para cada modo de estudo
 const promptsModos = {
   aula_guiada: {
     system: (professor, idioma, nome, nivel) => `
-      Você é ${professor}, um professor especializado em ${idioma}. 
+      Você é ${professor}, um professor especializado em ${idioma}.
       Você está dando uma aula guiada para ${nome}, que está no nível ${nivel}.
-      
+
       INSTRUÇÕES IMPORTANTES:
       - Responda SEMPRE em ${idioma}
       - Faça perguntas progressivas e didáticas
@@ -23,12 +22,12 @@ const promptsModos = {
     `,
     user: (mensagem) => `Aluno disse: "${mensagem}". Continue a aula de forma didática.`
   },
-  
+
   pratica_livre: {
     system: (professor, idioma, nome, nivel) => `
       Você é ${professor}, conversando naturalmente com ${nome} em ${idioma}.
       Nível do aluno: ${nivel}.
-      
+
       INSTRUÇÕES:
       - Mantenha uma conversa natural em ${idioma}
       - Use temas atuais e cotidianos
@@ -39,12 +38,12 @@ const promptsModos = {
     `,
     user: (mensagem) => `Continue esta conversa natural: "${mensagem}"`
   },
-  
+
   modo_professor: {
     system: (professor, idioma, nome, nivel) => `
       Você é ${professor}, um especialista em ${idioma} dando explicações detalhadas para ${nome}.
       Nível: ${nivel}.
-      
+
       INSTRUÇÕES:
       - Responda em ${idioma} com explicações claras
       - Forneça exemplos práticos
@@ -55,12 +54,12 @@ const promptsModos = {
     `,
     user: (mensagem) => `Explique detalhadamente sobre: "${mensagem}"`
   },
-  
+
   modo_vocabulario: {
     system: (professor, idioma, nome, nivel) => `
       Você é ${professor} ensinando vocabulário em ${idioma} para ${nome}.
       Nível: ${nivel}.
-      
+
       INSTRUÇÕES:
       - Apresente 3-5 palavras novas por sessão
       - Dê exemplos de uso em frases
@@ -73,16 +72,15 @@ const promptsModos = {
   }
 };
 
-// Função principal para processar mensagem baseada no modo de estudo
 export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   const { modo, idioma, professor, nome } = estado;
   const nivel = usuarioBanco?.nivel || 'iniciante';
-  
+
   const promptConfig = promptsModos[modo];
   if (!promptConfig) {
     throw new Error(`Modo de estudo inválido: ${modo}`);
   }
-  
+
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -99,27 +97,25 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
       temperature: 0.7,
       max_tokens: 300
     });
-    
+
     const resposta = completion.choices[0].message.content;
-    
-    // Extrair vocabulário novo para o modo vocabulário
+
     if (modo === 'modo_vocabulario') {
       await extrairEAdicionarVocabulario(resposta, usuarioBanco.id, idioma);
     }
-    
+
     return {
       resposta,
       incluirTraducao: true,
       incluirAudio: true
     };
-    
+
   } catch (error) {
     console.error('Erro ao processar modo de estudo:', error);
     throw error;
   }
 }
 
-// Função para extrair vocabulário da resposta da IA
 async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
   try {
     const completion = await openai.chat.completions.create({
@@ -127,7 +123,7 @@ async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
       messages: [
         {
           role: 'system',
-          content: `Extraia as palavras mais importantes desta resposta em ${idioma} e forneça suas traduções em português. 
+          content: `Extraia as palavras mais importantes desta resposta em ${idioma} e forneça suas traduções em português.
                    Formato: palavra1:tradução1|palavra2:tradução2|palavra3:tradução3
                    Máximo 5 palavras.`
         },
@@ -139,10 +135,10 @@ async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
       temperature: 0.3,
       max_tokens: 150
     });
-    
+
     const vocabularioExtraido = completion.choices[0].message.content;
     const pares = vocabularioExtraido.split('|');
-    
+
     for (const par of pares) {
       const [palavra, traducao] = par.split(':');
       if (palavra && traducao) {
@@ -154,7 +150,6 @@ async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
   }
 }
 
-// Função para gerar tradução
 export async function gerarTraducao(texto, idiomaOrigem) {
   try {
     const completion = await openai.chat.completions.create({
@@ -162,7 +157,7 @@ export async function gerarTraducao(texto, idiomaOrigem) {
       messages: [
         {
           role: 'system',
-          content: `Traduza o seguinte texto de ${idiomaOrigem} para português brasileiro. 
+          content: `Traduza o seguinte texto de ${idiomaOrigem} para português brasileiro.
                    Forneça apenas a tradução, sem explicações adicionais.`
         },
         {
@@ -173,7 +168,7 @@ export async function gerarTraducao(texto, idiomaOrigem) {
       temperature: 0.3,
       max_tokens: 200
     });
-    
+
     return completion.choices[0].message.content;
   } catch (error) {
     console.error('Erro ao gerar tradução:', error);
@@ -181,17 +176,16 @@ export async function gerarTraducao(texto, idiomaOrigem) {
   }
 }
 
-// Função para revisar vocabulário
 export async function iniciarRevisaoVocabulario(usuarioId, idioma) {
   const palavras = await buscarPalavrasRevisao(usuarioId, 5);
-  
+
   if (palavras.length === 0) {
     return {
       tipo: 'sem_revisao',
       mensagem: 'Parabéns! Você não tem palavras para revisar no momento. Continue estudando para adicionar mais vocabulário!'
     };
   }
-  
+
   return {
     tipo: 'revisao',
     palavras: palavras,
@@ -199,7 +193,6 @@ export async function iniciarRevisaoVocabulario(usuarioId, idioma) {
   };
 }
 
-// Função para controlar sessão de aula guiada
 export class SessaoAulaGuiada {
   constructor(usuarioId, idioma) {
     this.usuarioId = usuarioId;
@@ -210,33 +203,33 @@ export class SessaoAulaGuiada {
     this.maxQuestoes = 20;
     this.maxTempo = 30; // minutos
   }
-  
+
   incrementarQuestao(correta = false) {
     this.questoesRespondidas++;
     if (correta) this.questoesCorretas++;
   }
-  
+
   verificarLimites() {
     const tempoDecorrido = (new Date() - this.inicioSessao) / (1000 * 60); // em minutos
-    
+
     return {
       atingiuLimite: this.questoesRespondidas >= this.maxQuestoes || tempoDecorrido >= this.maxTempo,
       questoesRestantes: this.maxQuestoes - this.questoesRespondidas,
       tempoRestante: Math.max(0, this.maxTempo - Math.floor(tempoDecorrido))
     };
   }
-  
+
   async finalizarSessao() {
     const duracaoMinutos = Math.floor((new Date() - this.inicioSessao) / (1000 * 60));
     const pontosGanhos = this.questoesCorretas * 10;
-    
+
     await registrarSessaoEstudo(this.usuarioId, 'aula_guiada', {
       duracaoMinutos,
       questoesRespondidas: this.questoesRespondidas,
       questoesCorretas: this.questoesCorretas,
       pontosGanhos
     });
-    
+
     return {
       questoesRespondidas: this.questoesRespondidas,
       questoesCorretas: this.questoesCorretas,

@@ -1,13 +1,12 @@
 import { gerarAudio } from './audioService.js';
-import { processarModoEstudo, gerarTraducao, iniciarRevisaoVocabulario } from './studyModes.js';
-import { consultarUsuario, salvarUsuario, atualizarStreak } from './database.js';
+import { gerarTraducao } from './studyModes.js';
 import OpenAI from 'openai';
+import { mp3ToBase64 } from './mp3ToBase64.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Função para detectar gênero baseado no nome
 export async function detectarGenero(nome) {
   try {
     const completion = await openai.chat.completions.create({
@@ -33,32 +32,27 @@ export async function detectarGenero(nome) {
   }
 }
 
-// Função para enviar mensagem completa (texto + áudio + tradução)
 export async function enviarMensagemCompleta(client, user, texto, idioma, incluirTraducao = true, incluirAudio = true) {
   try {
-    // Enviar texto principal
     await client.sendText(user, texto);
 
-    // Gerar e enviar áudio se solicitado
     if (incluirAudio) {
       try {
         const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const caminhoAudio = await gerarAudio(texto, idioma, nomeArquivo);
-        await client.sendVoice(user, caminhoAudio);
+        const audioBuffer = await gerarAudio(texto, idioma, nomeArquivo);
+        const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+        await client.sendPttFromBase64(user, audioBase64);
       } catch (audioError) {
         console.error('Erro ao gerar/enviar áudio:', audioError);
-        // Continua sem áudio se houver erro
       }
     }
 
-    // Gerar e enviar tradução se solicitado
     if (incluirTraducao) {
       try {
         const traducao = await gerarTraducao(texto, idioma);
         await client.sendText(user, `📝 *Tradução:* ${traducao}`);
       } catch (traducaoError) {
         console.error('Erro ao gerar tradução:', traducaoError);
-        // Continua sem tradução se houver erro
       }
     }
 
@@ -68,7 +62,6 @@ export async function enviarMensagemCompleta(client, user, texto, idioma, inclui
   }
 }
 
-// Função para processar comandos especiais
 export function processarComandoEspecial(mensagem) {
   const comandos = {
     '/menu': 'menu_principal',
@@ -83,7 +76,6 @@ export function processarComandoEspecial(mensagem) {
   return comandos[comando] || null;
 }
 
-// Função para mostrar menu principal
 export async function mostrarMenuPrincipal(client, user, estado) {
   await client.sendListMessage(user, {
     buttonText: 'Escolher opção',
@@ -133,7 +125,6 @@ export async function mostrarMenuPrincipal(client, user, estado) {
   });
 }
 
-// Função para mostrar progresso do usuário
 export async function mostrarProgresso(client, user, usuarioBanco) {
   const { nome, nivel, pontuacao, streak_dias, ultima_atividade } = usuarioBanco;
 
@@ -151,7 +142,6 @@ Continue estudando para subir de nível! 🚀
   await client.sendText(user, progressoTexto);
 }
 
-// Função para normalizar texto (remover acentos, etc.)
 export function normalizarTexto(texto) {
   return texto
     .normalize('NFD')
@@ -160,7 +150,6 @@ export function normalizarTexto(texto) {
     .trim();
 }
 
-// Função para validar idioma selecionado
 export function validarIdioma(idiomaInput) {
   const idiomasValidos = {
     'ingles': 'Inglês',
@@ -183,11 +172,8 @@ export function validarIdioma(idiomaInput) {
     '🇨🇳 mandarim o idioma do futuro': 'Mandarim'
   };
 
-  // Normaliza e remove quebras de linha e descrições
   let idiomaNormalizado = normalizarTexto(idiomaInput.replace(/\n/g, ' ').replace(/ +/g, ' '));
-  // Tenta encontrar correspondência direta
   if (idiomasValidos[idiomaNormalizado]) return idiomasValidos[idiomaNormalizado];
-  // Tenta encontrar correspondência parcial (apenas o nome do idioma)
   for (const chave in idiomasValidos) {
     if (idiomaNormalizado.includes(chave)) {
       return idiomasValidos[chave];
@@ -196,7 +182,6 @@ export function validarIdioma(idiomaInput) {
   return null;
 }
 
-// Função para validar modo de estudo
 export function validarModoEstudo(modoInput) {
   const modosValidos = {
     'aula_guiada': 'Aula Guiada',
@@ -215,11 +200,34 @@ export function validarModoEstudo(modoInput) {
   return modosValidos[modoNormalizado] || null;
 }
 
-// Função para atualizar nível do usuário baseado na pontuação
 export function calcularNivel(pontuacao) {
   if (pontuacao < 100) return 'iniciante';
   if (pontuacao < 300) return 'básico';
   if (pontuacao < 600) return 'intermediário';
   if (pontuacao < 1000) return 'avançado';
   return 'fluente';
+}
+
+export async function enviarOpcoesMensagem(client, user, idioma) {
+  await client.sendListMessage(user, {
+    buttonText: 'Opções',
+    description: 'Escolha uma opção:',
+    sections: [
+      {
+        title: 'Ferramentas',
+        rows: [
+          {
+            rowId: 'traduzir_texto',
+            title: '📝 Traduzir',
+            description: 'Obtenha a tradução desta mensagem'
+          },
+          {
+            rowId: 'enviar_audio',
+            title: '🔊 Áudio',
+            description: 'Ouça esta mensagem em áudio'
+          }
+        ]
+      }
+    ]
+  });
 }

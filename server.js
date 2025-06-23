@@ -7,15 +7,17 @@ import {
 } from './src/database.js';
 import {
   detectarGenero,
-  enviarMensagemCompleta,
+  enviarOpcoesMensagem,
   processarComandoEspecial,
   mostrarMenuPrincipal,
   mostrarProgresso,
-  normalizarTexto,
   validarIdioma,
   validarModoEstudo,
-  calcularNivel
+  calcularNivel,
+  normalizarTexto
 } from './src/messageHandler.js';
+import { gerarTraducao } from './src/studyModes.js';
+import { gerarAudioProfessor } from './src/audioService.js';
 import {
   processarModoEstudo,
   iniciarRevisaoVocabulario,
@@ -24,9 +26,9 @@ import {
 
 dotenv.config();
 
-// Armazenar estados dos usuários em memória
 const estados = {};
 const sessoesAulaGuiada = {};
+const lastResponses = {};
 
 wppconnect
   .create({
@@ -41,27 +43,83 @@ wppconnect
     client.onMessage(async (message) => {
       const user = message.from;
 
-      // Filtros de segurança
       if (user !== '5511980483504@c.us') return;
       if (message.isGroupMsg || user.endsWith('@status') || user === 'status@broadcast') return;
 
       console.log(`📱 Mensagem de ${user}: ${message.body}`);
+      console.log(`📱 SelectedRowId: ${message.selectedRowId}`);
+
+      // Trata ações de opções rápidas (Traduzir/Áudio)
+      const textoMsg = message.body ? message.body.trim().toLowerCase() : '';
+
+      // Verifica se é uma ação de tradução
+      if (message.selectedRowId === 'traduzir_texto' ||
+          textoMsg === 'traduzir' ||
+          textoMsg === '📝 traduzir' ||
+          textoMsg.includes('traduzir')) {
+
+        if (lastResponses[user]) {
+          try {
+            console.log(`🔄 Traduzindo: ${lastResponses[user]}`);
+            const traducao = await gerarTraducao(lastResponses[user], estados[user]?.idioma || 'Inglês');
+            await client.sendText(user, `📝 *Tradução:* ${traducao}`);
+          } catch (err) {
+            console.error('Erro ao traduzir:', err);
+            await client.sendText(user, 'Erro ao traduzir o texto.');
+          }
+        } else {
+          await client.sendText(user, 'Não há mensagem para traduzir. Envie uma mensagem primeiro!');
+        }
+        return;
+      }
+
+      // Verifica se é uma ação de áudio
+      if (message.selectedRowId === 'enviar_audio' ||
+          textoMsg === 'áudio' ||
+          textoMsg === 'audio' ||
+          textoMsg === '🔊 áudio' ||
+          textoMsg === '🔊 audio' ||
+          textoMsg.includes('áudio') ||
+          textoMsg.includes('audio')) {
+
+        if (lastResponses[user]) {
+          try {
+            console.log(`🔊 Gerando áudio otimizado: ${lastResponses[user]}`);
+            const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Usa a função otimizada para professor com o gênero do usuário
+            const generoUsuario = estados[user]?.genero || 'feminino';
+            const audioBuffer = await gerarAudioProfessor(
+              lastResponses[user],
+              estados[user]?.idioma || 'Inglês',
+              nomeArquivo,
+              generoUsuario
+            );
+
+            const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+            await client.sendPttFromBase64(user, audioBase64);
+            console.log(`✅ Áudio enviado com sucesso (${audioBuffer.length} bytes)`);
+          } catch (err) {
+            console.error('❌ Erro ao gerar áudio:', err);
+            await client.sendText(user, 'Erro ao gerar o áudio. Tente novamente em alguns segundos.');
+          }
+        } else {
+          await client.sendText(user, 'Não há mensagem para converter em áudio. Envie uma mensagem primeiro!');
+        }
+        return;
+      }
 
       try {
-        // Verificar comandos especiais
         const comando = processarComandoEspecial(message.body);
         if (comando) {
           await processarComando(client, user, comando);
           return;
         }
 
-        // Consultar usuário no banco
         let usuarioBanco = await consultarUsuario(user);
 
-        // Inicializar estado se necessário
         if (!estados[user]) {
           if (usuarioBanco) {
-            // Usuário existente - restaurar estado
             estados[user] = {
               nome: usuarioBanco.nome,
               genero: usuarioBanco.genero,
@@ -73,22 +131,18 @@ wppconnect
               streak: usuarioBanco.streak_dias
             };
 
-            // Atualizar streak
             const novoStreak = await atualizarStreak(user);
             estados[user].streak = novoStreak;
 
-            // Mostrar menu principal
             await mostrarMenuPrincipal(client, user, estados[user]);
             return;
           } else {
-            // Novo usuário
             estados[user] = { etapa: 0 };
           }
         }
 
         const estado = estados[user];
 
-        // Fluxo de cadastro inicial
         if (estado.etapa === 0) {
           await iniciarCadastro(client, user, estado);
           return;
@@ -104,7 +158,6 @@ wppconnect
           return;
         }
 
-        // Substituir chamada na etapa 3:
         if (estado.etapa === 3) {
           await processarSelecaoModoEstudo(client, user, estado, message);
           return;
@@ -121,7 +174,6 @@ wppconnect
       }
     });
 
-    // Função para processar comandos especiais
     async function processarComando(client, user, comando) {
       const usuarioBanco = await consultarUsuario(user);
       if (!usuarioBanco) {
@@ -152,27 +204,22 @@ wppconnect
       }
     }
 
-    // Função para iniciar cadastro
     async function iniciarCadastro(client, user, estado) {
       await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente!\n\n📝 Para começar, qual é o seu nome?');
       estado.etapa = 1;
     }
 
-    // Função para processar nome
     async function processarNome(client, user, estado, nome) {
       estado.nome = nome.trim();
 
-      // Detectar gênero
       const genero = await detectarGenero(estado.nome);
       estado.genero = genero;
 
-      // Definir professor baseado no gênero
       const nomeAssistente = genero === 'masculino' ? 'Isaias' : 'Rute';
       estado.professor = nomeAssistente;
 
       await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas!`);
 
-      // Mostrar opções de idiomas
       await client.sendListMessage(user, {
         buttonText: 'Escolher idioma',
         description: 'Qual idioma você deseja aprender? Temos um teste gratuito para você! 🎁',
@@ -192,7 +239,6 @@ wppconnect
       estado.etapa = 2;
     }
 
-    // Função para processar seleção de idioma
     async function processarIdioma(client, user, estado, message) {
       const idiomaInput = message.selectedRowId || message.body.trim();
       const idioma = validarIdioma(idiomaInput);
@@ -204,7 +250,6 @@ wppconnect
 
       estado.idioma = idioma;
 
-      // Salvar usuário no banco
       await salvarUsuario(user, {
         nome: estado.nome,
         genero: estado.genero,
@@ -218,12 +263,10 @@ wppconnect
 
       await client.sendText(user, `🎉 Excelente! Você escolheu aprender ${idioma}.\n\nAgora vamos começar sua jornada de aprendizado!`);
 
-      // Mostrar modos de estudo
       await mostrarMenuPrincipal(client, user, estado);
       estado.etapa = 3;
     }
 
-    // Função para processar seleção de modo de estudo
     async function processarSelecaoModoEstudo(client, user, estado, message) {
       const modoInput = message.selectedRowId || message.body.trim().split('\n')[0];
       const modo = validarModoEstudo(modoInput);
@@ -233,9 +276,8 @@ wppconnect
         return;
       }
 
-      estado.modo = modoInput.includes('_') ? modoInput : modoInput.toLowerCase().replace(' ', '_');
+      estado.modo = normalizarTexto(modoInput.replace(' ', '_'));
 
-      // Mensagens específicas para cada modo
       const mensagensModo = {
         'aula_guiada': '📚 Modo Aula Guiada ativado!\n\nVou te guiar passo a passo. Você tem 30 minutos ou 20 questões por sessão.\n\nVamos começar? Envie qualquer mensagem!',
         'pratica_livre': '💬 Modo Prática Livre ativado!\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\nSobre o que você gostaria de conversar?',
@@ -245,7 +287,6 @@ wppconnect
 
       await client.sendText(user, mensagensModo[estado.modo] || 'Modo selecionado! Vamos começar?');
 
-      // Inicializar sessão de aula guiada se necessário
       if (estado.modo === 'aula_guiada') {
         const usuarioBanco = await consultarUsuario(user);
         sessoesAulaGuiada[user] = new SessaoAulaGuiada(usuarioBanco.id, estado.idioma);
@@ -254,28 +295,23 @@ wppconnect
       estado.etapa = 4;
     }
 
-    // Função para processar estudo
     async function processarEstudo(client, user, estado, message, usuarioBanco) {
       if (!message.body || message.body.length === 0) return;
 
       try {
-        // Processar mensagem baseada no modo de estudo
+        console.log(`🎓 Processando estudo: ${message.body}`);
         const resultado = await processarModoEstudo(estado, message.body, usuarioBanco);
 
-        // Enviar resposta completa (texto + áudio + tradução)
-        await enviarMensagemCompleta(
-          client,
-          user,
-          resultado.resposta,
-          estado.idioma,
-          resultado.incluirTraducao,
-          resultado.incluirAudio
-        );
+        lastResponses[user] = resultado.resposta;
+        console.log(`💾 Salvando resposta para tradução/áudio: ${resultado.resposta.substring(0, 50)}...`);
 
-        // Controle especial para aula guiada
+        await client.sendText(user, resultado.resposta);
+
+        await enviarOpcoesMensagem(client, user, estado.idioma);
+
         if (estado.modo === 'aula_guiada' && sessoesAulaGuiada[user]) {
           const sessao = sessoesAulaGuiada[user];
-          sessao.incrementarQuestao(true); // Assumir resposta correta por simplicidade
+          sessao.incrementarQuestao(true);
 
           const limites = sessao.verificarLimites();
 
@@ -283,19 +319,18 @@ wppconnect
             const resultadoSessao = await sessao.finalizarSessao();
 
             await client.sendText(user, `
-🎉 *Sessão Concluída!*
+                🎉 *Sessão Concluída!*
 
-📊 *Resultado:*
-• Questões respondidas: ${resultadoSessao.questoesRespondidas}
-• Questões corretas: ${resultadoSessao.questoesCorretas}
-• Aproveitamento: ${resultadoSessao.aproveitamento}%
-• Pontos ganhos: ${resultadoSessao.pontosGanhos}
-• Tempo de estudo: ${resultadoSessao.duracaoMinutos} minutos
+                📊 *Resultado:*
+                • Questões respondidas: ${resultadoSessao.questoesRespondidas}
+                • Questões corretas: ${resultadoSessao.questoesCorretas}
+                • Aproveitamento: ${resultadoSessao.aproveitamento}%
+                • Pontos ganhos: ${resultadoSessao.pontosGanhos}
+                • Tempo de estudo: ${resultadoSessao.duracaoMinutos} minutos
 
-Parabéns pelo seu progresso! 🚀
+                Parabéns pelo seu progresso! 🚀
             `);
 
-            // Atualizar pontuação do usuário
             const novaPontuacao = (usuarioBanco.pontuacao || 0) + resultadoSessao.pontosGanhos;
             const novoNivel = calcularNivel(novaPontuacao);
 
@@ -306,11 +341,9 @@ Parabéns pelo seu progresso! 🚀
               etapa: 3
             });
 
-            // Limpar sessão
             delete sessoesAulaGuiada[user];
             estado.etapa = 3;
 
-            // Mostrar menu novamente
             setTimeout(() => {
               mostrarMenuPrincipal(client, user, estado);
             }, 2000);
@@ -320,7 +353,6 @@ Parabéns pelo seu progresso! 🚀
           }
         }
 
-        // Atualizar streak
         await atualizarStreak(user);
 
       } catch (error) {
@@ -329,32 +361,31 @@ Parabéns pelo seu progresso! 🚀
       }
     }
 
-    // Função para mostrar ajuda
     async function mostrarAjuda(client, user) {
       const textoAjuda = `
-🆘 *Central de Ajuda - ONEDI*
+          🆘 *Central de Ajuda - ONEDI*
 
-*Comandos disponíveis:*
-• /menu - Voltar ao menu principal
-• /progresso - Ver seu progresso
-• /vocabulario - Revisar palavras aprendidas
-• /nivel - Verificar seu nível atual
-• /streak - Ver sua sequência de dias
-• /ajuda - Mostrar esta ajuda
+          *Comandos disponíveis:*
+          • /menu - Voltar ao menu principal
+          • /progresso - Ver seu progresso
+          • /vocabulario - Revisar palavras aprendidas
+          • /nivel - Verificar seu nível atual
+          • /streak - Ver sua sequência de dias
+          • /ajuda - Mostrar esta ajuda
 
-*Modos de Estudo:*
-📚 *Aula Guiada* - Lições estruturadas
-💬 *Prática Livre* - Conversação natural
-👨‍🏫 *Modo Professor* - Explicações detalhadas
-📖 *Modo Vocabulário* - Aprendizado de palavras
+          *Modos de Estudo:*
+          📚 *Aula Guiada* - Lições estruturadas
+          💬 *Prática Livre* - Conversação natural
+          👨‍🏫 *Modo Professor* - Explicações detalhadas
+          📖 *Modo Vocabulário* - Aprendizado de palavras
 
-*Dicas:*
-• Estude todos os dias para manter sua sequência
-• Use o áudio para melhorar a pronúncia
-• Leia as traduções para entender melhor
-• Pratique diferentes modos de estudo
+          *Dicas:*
+          • Estude todos os dias para manter sua sequência
+          • Use o áudio para melhorar a pronúncia
+          • Leia as traduções para entender melhor
+          • Pratique diferentes modos de estudo
 
-Precisa de mais ajuda? Entre em contato conosco! 📞
+          Precisa de mais ajuda? Entre em contato conosco! 📞
       `;
 
       await client.sendText(user, textoAjuda);
@@ -365,13 +396,14 @@ Precisa de mais ajuda? Entre em contato conosco! 📞
     console.error('❌ Erro ao conectar:', error);
   });
 
-// Tratamento de erros globais
 process.on('uncaughtException', (err) => {
   console.error('❌ Erro não tratado:', err);
+  // Não encerra o processo, apenas loga o erro
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Rejeição de promessa não tratada:', reason);
+  // Não encerra o processo, apenas loga o erro
 });
 
 console.log('🔄 Iniciando sistema...');
