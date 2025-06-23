@@ -1,0 +1,65 @@
+-- Schema do banco de dados para o sistema de ensino
+
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS usuarios (
+  id SERIAL PRIMARY KEY,
+  telefone VARCHAR(50) UNIQUE NOT NULL,
+  nome VARCHAR(100) NOT NULL,
+  genero VARCHAR(20) NOT NULL,
+  idioma VARCHAR(50) NOT NULL,
+  professor VARCHAR(50) NOT NULL,
+  etapa INTEGER DEFAULT 0,
+  nivel VARCHAR(20) DEFAULT 'iniciante',
+  pontuacao INTEGER DEFAULT 0,
+  streak_dias INTEGER DEFAULT 0,
+  ultima_atividade TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de progresso por lição
+CREATE TABLE IF NOT EXISTS progresso_licoes (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER REFERENCES usuarios(id),
+  licao_id VARCHAR(100) NOT NULL,
+  modo_estudo VARCHAR(50) NOT NULL,
+  questoes_respondidas INTEGER DEFAULT 0,
+  questoes_corretas INTEGER DEFAULT 0,
+  tempo_gasto INTEGER DEFAULT 0, -- em minutos
+  completada BOOLEAN DEFAULT FALSE,
+  data_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  data_conclusao TIMESTAMP NULL
+);
+
+-- Tabela de vocabulário aprendido
+CREATE TABLE IF NOT EXISTS vocabulario_usuario (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER REFERENCES usuarios(id),
+  palavra VARCHAR(200) NOT NULL,
+  traducao VARCHAR(200) NOT NULL,
+  idioma VARCHAR(50) NOT NULL,
+  nivel_conhecimento INTEGER DEFAULT 1, -- 1-5
+  proxima_revisao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  vezes_vista INTEGER DEFAULT 1,
+  vezes_acertada INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de sessões de estudo
+CREATE TABLE IF NOT EXISTS sessoes_estudo (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER REFERENCES usuarios(id),
+  modo_estudo VARCHAR(50) NOT NULL,
+  duracao_minutos INTEGER DEFAULT 0,
+  questoes_respondidas INTEGER DEFAULT 0,
+  questoes_corretas INTEGER DEFAULT 0,
+  pontos_ganhos INTEGER DEFAULT 0,
+  data_sessao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_usuarios_telefone ON usuarios(telefone);
+CREATE INDEX IF NOT EXISTS idx_progresso_usuario ON progresso_licoes(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulario_usuario ON vocabulario_usuario(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_vocabulario_revisao ON vocabulario_usuario(proxima_revisao);
+CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes_estudo(usuario_id);
