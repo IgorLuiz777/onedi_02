@@ -1,0 +1,402 @@
+// Sistema de progressão de aulas estruturadas por idioma
+export const progressaoAulas = {
+  'Inglês': [
+    // Nível Iniciante (1-20)
+    { id: 1, topico: 'Alphabet and Basic Sounds', conteudo: 'Alfabeto e sons básicos', nivel: 'iniciante' },
+    { id: 2, topico: 'Personal Pronouns', conteudo: 'Pronomes pessoais (I, you, he, she, it, we, they)', nivel: 'iniciante' },
+    { id: 3, topico: 'Verb TO BE - Present', conteudo: 'Verbo ser/estar no presente (am, is, are)', nivel: 'iniciante' },
+    { id: 4, topico: 'Articles', conteudo: 'Artigos (a, an, the)', nivel: 'iniciante' },
+    { id: 5, topico: 'Basic Vocabulary - Family', conteudo: 'Vocabulário básico - família', nivel: 'iniciante' },
+    { id: 6, topico: 'Numbers 1-100', conteudo: 'Números de 1 a 100', nivel: 'iniciante' },
+    { id: 7, topico: 'Colors and Basic Adjectives', conteudo: 'Cores e adjetivos básicos', nivel: 'iniciante' },
+    { id: 8, topico: 'Days and Months', conteudo: 'Dias da semana e meses', nivel: 'iniciante' },
+    { id: 9, topico: 'Basic Questions with TO BE', conteudo: 'Perguntas básicas com verbo to be', nivel: 'iniciante' },
+    { id: 10, topico: 'Possessive Adjectives', conteudo: 'Adjetivos possessivos (my, your, his, her)', nivel: 'iniciante' },
+    { id: 11, topico: 'Simple Present - Regular Verbs', conteudo: 'Presente simples - verbos regulares', nivel: 'iniciante' },
+    { id: 12, topico: 'Basic Vocabulary - House', conteudo: 'Vocabulário básico - casa', nivel: 'iniciante' },
+    { id: 13, topico: 'Frequency Adverbs', conteudo: 'Advérbios de frequência (always, never, sometimes)', nivel: 'iniciante' },
+    { id: 14, topico: 'Simple Present - Questions', conteudo: 'Perguntas no presente simples', nivel: 'iniciante' },
+    { id: 15, topico: 'Basic Vocabulary - Food', conteudo: 'Vocabulário básico - comida', nivel: 'iniciante' },
+    { id: 16, topico: 'Prepositions of Place', conteudo: 'Preposições de lugar (in, on, at)', nivel: 'iniciante' },
+    { id: 17, topico: 'There is / There are', conteudo: 'Há/existe (there is/there are)', nivel: 'iniciante' },
+    { id: 18, topico: 'Basic Vocabulary - Clothes', conteudo: 'Vocabulário básico - roupas', nivel: 'iniciante' },
+    { id: 19, topico: 'Can / Cannot', conteudo: 'Poder/conseguir (can/cannot)', nivel: 'iniciante' },
+    { id: 20, topico: 'Review - Iniciante', conteudo: 'Revisão geral do nível iniciante', nivel: 'iniciante' },
+
+    // Nível Básico (21-40)
+    { id: 21, topico: 'Present Continuous', conteudo: 'Presente contínuo (am/is/are + -ing)', nivel: 'básico' },
+    { id: 22, topico: 'Basic Vocabulary - Jobs', conteudo: 'Vocabulário básico - profissões', nivel: 'básico' },
+    { id: 23, topico: 'Simple Past - Regular Verbs', conteudo: 'Passado simples - verbos regulares', nivel: 'básico' },
+    { id: 24, topico: 'Simple Past - Irregular Verbs', conteudo: 'Passado simples - verbos irregulares', nivel: 'básico' },
+    { id: 25, topico: 'Past of TO BE', conteudo: 'Passado do verbo to be (was/were)', nivel: 'básico' },
+    { id: 26, topico: 'Time Expressions', conteudo: 'Expressões de tempo (yesterday, last week)', nivel: 'básico' },
+    { id: 27, topico: 'Basic Vocabulary - Transportation', conteudo: 'Vocabulário básico - transporte', nivel: 'básico' },
+    { id: 28, topico: 'Future with GOING TO', conteudo: 'Futuro com going to', nivel: 'básico' },
+    { id: 29, topico: 'Comparative Adjectives', conteudo: 'Adjetivos comparativos (bigger, more beautiful)', nivel: 'básico' },
+    { id: 30, topico: 'Superlative Adjectives', conteudo: 'Adjetivos superlativos (biggest, most beautiful)', nivel: 'básico' },
+    { id: 31, topico: 'Basic Vocabulary - Weather', conteudo: 'Vocabulário básico - clima', nivel: 'básico' },
+    { id: 32, topico: 'Countable vs Uncountable', conteudo: 'Substantivos contáveis e incontáveis', nivel: 'básico' },
+    { id: 33, topico: 'Some / Any / Much / Many', conteudo: 'Quantificadores (some, any, much, many)', nivel: 'básico' },
+    { id: 34, topico: 'Basic Vocabulary - Sports', conteudo: 'Vocabulário básico - esportes', nivel: 'básico' },
+    { id: 35, topico: 'Modal Verbs - Should', conteudo: 'Verbos modais - should (deveria)', nivel: 'básico' },
+    { id: 36, topico: 'Prepositions of Time', conteudo: 'Preposições de tempo (in, on, at)', nivel: 'básico' },
+    { id: 37, topico: 'Basic Vocabulary - Animals', conteudo: 'Vocabulário básico - animais', nivel: 'básico' },
+    { id: 38, topico: 'Question Words', conteudo: 'Palavras interrogativas (what, where, when, why, how)', nivel: 'básico' },
+    { id: 39, topico: 'Basic Conversations', conteudo: 'Conversações básicas do dia a dia', nivel: 'básico' },
+    { id: 40, topico: 'Review - Básico', conteudo: 'Revisão geral do nível básico', nivel: 'básico' },
+
+    // Nível Intermediário (41-60)
+    { id: 41, topico: 'Present Perfect', conteudo: 'Presente perfeito (have/has + past participle)', nivel: 'intermediário' },
+    { id: 42, topico: 'Present Perfect vs Simple Past', conteudo: 'Diferenças entre presente perfeito e passado simples', nivel: 'intermediário' },
+    { id: 43, topico: 'Past Continuous', conteudo: 'Passado contínuo (was/were + -ing)', nivel: 'intermediário' },
+    { id: 44, topico: 'Future with WILL', conteudo: 'Futuro com will', nivel: 'intermediário' },
+    { id: 45, topico: 'First Conditional', conteudo: 'Primeira condicional (if + present, will)', nivel: 'intermediário' },
+    { id: 46, topico: 'Modal Verbs - Must/Have to', conteudo: 'Verbos modais - obrigação (must/have to)', nivel: 'intermediário' },
+    { id: 47, topico: 'Modal Verbs - May/Might', conteudo: 'Verbos modais - possibilidade (may/might)', nivel: 'intermediário' },
+    { id: 48, topico: 'Passive Voice - Present', conteudo: 'Voz passiva no presente', nivel: 'intermediário' },
+    { id: 49, topico: 'Relative Pronouns', conteudo: 'Pronomes relativos (who, which, that)', nivel: 'intermediário' },
+    { id: 50, topico: 'Phrasal Verbs - Basic', conteudo: 'Verbos frasais básicos', nivel: 'intermediário' },
+    { id: 51, topico: 'Gerunds and Infinitives', conteudo: 'Gerúndios e infinitivos', nivel: 'intermediário' },
+    { id: 52, topico: 'Past Perfect Continuous', conteudo: 'Passado perfeito contínuo (had been + -ing)', nivel: 'intermediário' },
+    { id: 53, topico: 'Second Conditional - Review', conteudo: 'Revisão da segunda condicional', nivel: 'intermediário' },
+    { id: 54, topico: 'Adjective Order', conteudo: 'Ordem dos adjetivos', nivel: 'intermediário' },
+    { id: 55, topico: 'Linking Words', conteudo: 'Conectivos (however, therefore, although)', nivel: 'intermediário' },
+    { id: 56, topico: 'Indirect Questions', conteudo: 'Perguntas indiretas', nivel: 'intermediário' },
+    { id: 57, topico: 'Used to / Be used to', conteudo: 'Hábitos passados e familiaridade', nivel: 'intermediário' },
+    { id: 58, topico: 'Wish / If only', conteudo: 'Expressando desejos e arrependimentos', nivel: 'intermediário' },
+    { id: 59, topico: 'Conversation Practice', conteudo: 'Prática de conversação com temas variados', nivel: 'intermediário' },
+    { id: 60, topico: 'Review - Intermediário', conteudo: 'Revisão geral do nível intermediário', nivel: 'intermediário' },
+
+    // Nível Avançado (61-80)
+    { id: 61, topico: 'Past Perfect', conteudo: 'Passado perfeito (had + past participle)', nivel: 'avançado' },
+    { id: 62, topico: 'Second Conditional', conteudo: 'Segunda condicional (if + past, would)', nivel: 'avançado' },
+    { id: 63, topico: 'Third Conditional', conteudo: 'Terceira condicional (if + past perfect, would have)', nivel: 'avançado' },
+    { id: 64, topico: 'Passive Voice - Past', conteudo: 'Voz passiva no passado', nivel: 'avançado' },
+    { id: 65, topico: 'Reported Speech', conteudo: 'Discurso indireto', nivel: 'avançado' },
+    { id: 66, topico: 'Causative Form', conteudo: 'Forma causativa (have/get something done)', nivel: 'avançado' },
+    { id: 67, topico: 'Advanced Phrasal Verbs', conteudo: 'Verbos frasais avançados', nivel: 'avançado' },
+    { id: 68, topico: 'Advanced Modal Verbs', conteudo: 'Modais avançados (should have, might have, must have)', nivel: 'avançado' },
+    { id: 69, topico: 'Inversion in Conditionals', conteudo: 'Inversão em condicionais (Had I known... etc.)', nivel: 'avançado' },
+    { id: 70, topico: 'Idioms and Expressions', conteudo: 'Expressões idiomáticas do inglês', nivel: 'avançado' },
+    { id: 71, topico: 'Collocations', conteudo: 'Colocações frequentes (make a decision, do homework)', nivel: 'avançado' },
+    { id: 72, topico: 'Discourse Markers', conteudo: 'Marcadores discursivos (in other words, as a result)', nivel: 'avançado' },
+    { id: 73, topico: 'Paraphrasing Techniques', conteudo: 'Técnicas de paráfrase', nivel: 'avançado' },
+    { id: 74, topico: 'Advanced Reading Strategies', conteudo: 'Estratégias de leitura avançadas', nivel: 'avançado' },
+    { id: 75, topico: 'Advanced Listening Strategies', conteudo: 'Estratégias de escuta avançadas', nivel: 'avançado' },
+    { id: 76, topico: 'Writing Essays', conteudo: 'Escrevendo redações (estrutura, coesão e coerência)', nivel: 'avançado' },
+    { id: 77, topico: 'Debate and Discussion Skills', conteudo: 'Habilidades de debate e argumentação', nivel: 'avançado' },
+    { id: 78, topico: 'Academic Vocabulary', conteudo: 'Vocabulário acadêmico', nivel: 'avançado' },
+    { id: 79, topico: 'Fluency Practice', conteudo: 'Prática de fluência avançada', nivel: 'avançado' },
+    { id: 80, topico: 'Review - Avançado', conteudo: 'Revisão geral do nível avançado', nivel: 'avançado' }
+  ],
+
+  'Espanhol': [
+    // Nível Iniciante (1-20)
+    { id: 1, topico: 'Alfabeto y Pronunciación', conteudo: 'Alfabeto e pronunciação', nivel: 'iniciante' },
+    { id: 2, topico: 'Pronombres Personales', conteudo: 'Pronomes pessoais (yo, tú, él, ella, nosotros, vosotros, ellos)', nivel: 'iniciante' },
+    { id: 3, topico: 'Verbos SER y ESTAR', conteudo: 'Verbos ser e estar no presente', nivel: 'iniciante' },
+    { id: 4, topico: 'Artículos Definidos e Indefinidos', conteudo: 'Artigos definidos e indefinidos (el, la, los, las, un, una)', nivel: 'iniciante' },
+    { id: 5, topico: 'Vocabulario - Familia', conteudo: 'Vocabulário básico - família', nivel: 'iniciante' },
+    { id: 6, topico: 'Números del 1 al 100', conteudo: 'Números de 1 a 100', nivel: 'iniciante' },
+    { id: 7, topico: 'Colores y Adjetivos Básicos', conteudo: 'Cores e adjetivos básicos', nivel: 'iniciante' },
+    { id: 8, topico: 'Días y Meses', conteudo: 'Dias da semana e meses do ano', nivel: 'iniciante' },
+    { id: 9, topico: 'Preguntas Básicas con SER/ESTAR', conteudo: 'Perguntas básicas com ser/estar', nivel: 'iniciante' },
+    { id: 10, topico: 'Adjetivos Posesivos', conteudo: 'Adjetivos possessivos (mi, tu, su, nuestro)', nivel: 'iniciante' },
+    { id: 11, topico: 'Presente de Verbos Regulares', conteudo: 'Presente do indicativo - verbos regulares', nivel: 'iniciante' },
+    { id: 12, topico: 'Vocabulario - Casa', conteudo: 'Vocabulário básico - casa', nivel: 'iniciante' },
+    { id: 13, topico: 'Adverbios de Frecuencia', conteudo: 'Advérbios de frequência (siempre, nunca, a veces)', nivel: 'iniciante' },
+    { id: 14, topico: 'Presente - Preguntas y Negaciones', conteudo: 'Perguntas e negações no presente', nivel: 'iniciante' },
+    { id: 15, topico: 'Vocabulario - Comida', conteudo: 'Vocabulário básico - comida', nivel: 'iniciante' },
+    { id: 16, topico: 'Preposiciones de Lugar', conteudo: 'Preposições de lugar (en, sobre, debajo)', nivel: 'iniciante' },
+    { id: 17, topico: 'Hay / No hay', conteudo: 'Há / Não há', nivel: 'iniciante' },
+    { id: 18, topico: 'Vocabulario - Ropa', conteudo: 'Vocabulário básico - roupas', nivel: 'iniciante' },
+    { id: 19, topico: 'Poder / No Poder', conteudo: 'Verbo poder (puedo, no puedo)', nivel: 'iniciante' },
+    { id: 20, topico: 'Revisión - Iniciante', conteudo: 'Revisão geral do nível iniciante', nivel: 'iniciante' },
+
+    // Nível Básico (21-40)
+    { id: 21, topico: 'Presente Continuo', conteudo: 'Estar + gerúndio', nivel: 'básico' },
+    { id: 22, topico: 'Vocabulario - Profesiones', conteudo: 'Vocabulário - profissões', nivel: 'básico' },
+    { id: 23, topico: 'Pretérito Perfecto Simple - Verbos Regulares', conteudo: 'Passado simples - verbos regulares', nivel: 'básico' },
+    { id: 24, topico: 'Pretérito Perfecto Simple - Verbos Irregulares', conteudo: 'Passado simples - verbos irregulares', nivel: 'básico' },
+    { id: 25, topico: 'Pretérito del verbo SER y ESTAR', conteudo: 'Passado de ser e estar', nivel: 'básico' },
+    { id: 26, topico: 'Expresiones de Tiempo', conteudo: 'Expressões de tempo (ayer, la semana pasada)', nivel: 'básico' },
+    { id: 27, topico: 'Vocabulario - Transporte', conteudo: 'Vocabulário - transporte', nivel: 'básico' },
+    { id: 28, topico: 'Futuro con IR A', conteudo: 'Futuro com ir + a + infinitivo', nivel: 'básico' },
+    { id: 29, topico: 'Adjetivos Comparativos', conteudo: 'Adjetivos comparativos (más que, menos que)', nivel: 'básico' },
+    { id: 30, topico: 'Adjetivos Superlativos', conteudo: 'Adjetivos superlativos (el más, el menos)', nivel: 'básico' },
+    { id: 31, topico: 'Vocabulario - Clima', conteudo: 'Vocabulário - clima', nivel: 'básico' },
+    { id: 32, topico: 'Sustantivos Contables e Incontables', conteudo: 'Substantivos contáveis e incontáveis', nivel: 'básico' },
+    { id: 33, topico: 'Cuantificadores: algún, ningún, mucho, poco', conteudo: 'Quantificadores em espanhol', nivel: 'básico' },
+    { id: 34, topico: 'Vocabulario - Deportes', conteudo: 'Vocabulário - esportes', nivel: 'básico' },
+    { id: 35, topico: 'Verbo Deber', conteudo: 'Verbo modal "deber" (deveria)', nivel: 'básico' },
+    { id: 36, topico: 'Preposiciones de Tiempo', conteudo: 'Preposições de tempo (en, a, desde)', nivel: 'básico' },
+    { id: 37, topico: 'Vocabulario - Animales', conteudo: 'Vocabulário - animais', nivel: 'básico' },
+    { id: 38, topico: 'Palabras Interrogativas', conteudo: 'Palavras interrogativas (qué, cuándo, dónde, por qué)', nivel: 'básico' },
+    { id: 39, topico: 'Conversaciones Cotidianas', conteudo: 'Conversações básicas do dia a dia', nivel: 'básico' },
+    { id: 40, topico: 'Revisión - Básico', conteudo: 'Revisão geral do nível básico', nivel: 'básico' },
+
+    // Nível Intermediário (41-60)
+    { id: 41, topico: 'Pretérito Perfecto Compuesto', conteudo: 'Presente perfeito composto (he + participio)', nivel: 'intermediário' },
+    { id: 42, topico: 'Pretérito Imperfecto', conteudo: 'Pretérito imperfeito', nivel: 'intermediário' },
+    { id: 43, topico: 'Pretérito Pluscuamperfecto', conteudo: 'Mais-que-perfeito composto', nivel: 'intermediário' },
+    { id: 44, topico: 'Futuro Simple', conteudo: 'Futuro simples', nivel: 'intermediário' },
+    { id: 45, topico: 'Condicional Simple', conteudo: 'Condicional simples', nivel: 'intermediário' },
+    { id: 46, topico: 'Subjuntivo Presente', conteudo: 'Modo subjuntivo no presente', nivel: 'intermediário' },
+    { id: 47, topico: 'Subjuntivo Imperfecto', conteudo: 'Modo subjuntivo no pretérito imperfeito', nivel: 'intermediário' },
+    { id: 48, topico: 'Oraciones Condicionales - Tipos 1 y 2', conteudo: 'Condicionais tipos 1 e 2', nivel: 'intermediário' },
+    { id: 49, topico: 'Pronombres Relativos', conteudo: 'Pronomes relativos (que, quien, cuyo)', nivel: 'intermediário' },
+    { id: 50, topico: 'Voz Pasiva', conteudo: 'Voz passiva', nivel: 'intermediário' },
+    { id: 51, topico: 'Verbos Modales - Deber, Tener que, Poder', conteudo: 'Modais de obrigação e possibilidade', nivel: 'intermediário' },
+    { id: 52, topico: 'Estilo Indirecto', conteudo: 'Discurso indireto', nivel: 'intermediário' },
+    { id: 53, topico: 'Pronombres de Objeto Directo e Indirecto', conteudo: 'Pronomes objeto direto e indireto', nivel: 'intermediário' },
+    { id: 54, topico: 'Perífrasis Verbales', conteudo: 'Locuções verbais comuns', nivel: 'intermediário' },
+    { id: 55, topico: 'Adverbios y Locuciones Adverbiales', conteudo: 'Advérbios e expressões adverbiais', nivel: 'intermediário' },
+    { id: 56, topico: 'Conectores y Preposiciones', conteudo: 'Conectores e preposições avançadas', nivel: 'intermediário' },
+    { id: 57, topico: 'Vocabulario - Tecnología', conteudo: 'Vocabulário relacionado à tecnologia', nivel: 'intermediário' },
+    { id: 58, topico: 'Vocabulario - Salud', conteudo: 'Vocabulário relacionado à saúde', nivel: 'intermediário' },
+    { id: 59, topico: 'Expresiones Idiomáticas Básicas', conteudo: 'Expressões idiomáticas comuns', nivel: 'intermediário' },
+    { id: 60, topico: 'Revisión - Intermedio', conteudo: 'Revisão geral do nível intermediário', nivel: 'intermediário' },
+
+    // Nível Avançado (61-80)
+    { id: 61, topico: 'Subjuntivo Perfecto', conteudo: 'Subjuntivo no perfeito composto', nivel: 'avançado' },
+    { id: 62, topico: 'Subjuntivo Pluscuamperfecto', conteudo: 'Subjuntivo no mais-que-perfeito composto', nivel: 'avançado' },
+    { id: 63, topico: 'Oraciones Condicionales - Tipo 3', conteudo: 'Condicional tipo 3', nivel: 'avançado' },
+    { id: 64, topico: 'Voz Pasiva con Ser y Estar', conteudo: 'Voz passiva com ser e estar', nivel: 'avançado' },
+    { id: 65, topico: 'Estilo Indirecto Avanzado', conteudo: 'Discurso indireto avançado', nivel: 'avançado' },
+    { id: 66, topico: 'Expresiones Idiomáticas Avanzadas', conteudo: 'Expressões idiomáticas avançadas', nivel: 'avançado' },
+    { id: 67, topico: 'Vocabulario - Negocios', conteudo: 'Vocabulário de negócios', nivel: 'avançado' },
+    { id: 68, topico: 'Vocabulario - Política y Sociedad', conteudo: 'Vocabulário político e social', nivel: 'avançado' },
+    { id: 69, topico: 'Análisis de Textos Literarios', conteudo: 'Análise de textos literários', nivel: 'avançado' },
+    { id: 70, topico: 'Escritura Académica', conteudo: 'Escrita acadêmica formal', nivel: 'avançado' },
+    { id: 71, topico: 'Técnicas de Debate y Argumentación', conteudo: 'Técnicas para debate e argumentação', nivel: 'avançado' },
+    { id: 72, topico: 'Presentaciones Orales', conteudo: 'Preparação e execução de apresentações orais', nivel: 'avançado' },
+    { id: 73, topico: 'Gramática Avanzada - Concordancia', conteudo: 'Concordância avançada de tempos e modos', nivel: 'avançado' },
+    { id: 74, topico: 'Pronunciación Avanzada', conteudo: 'Aperfeiçoamento da pronúncia', nivel: 'avançado' },
+    { id: 75, topico: 'Expresión Escrita Creativa', conteudo: 'Escrita criativa', nivel: 'avançado' },
+    { id: 76, topico: 'Literatura Hispanoamericana', conteudo: 'Estudo da literatura hispano-americana', nivel: 'avançado' },
+    { id: 77, topico: 'Cultura y Costumbres', conteudo: 'Cultura e costumes dos países hispanofalantes', nivel: 'avançado' },
+    { id: 78, topico: 'Medios de Comunicación', conteudo: 'Vocabulário e análise de mídia', nivel: 'avançado' },
+    { id: 79, topico: 'Exámenes DELE - Preparación', conteudo: 'Preparação para exames DELE', nivel: 'avançado' },
+    { id: 80, topico: 'Revisión - Avanzado', conteudo: 'Revisão geral do nível avançado', nivel: 'avançado' }
+  ],
+
+  'Francês': [
+    // Nível Iniciante (1-20)
+    { id: 1, topico: 'Alphabet et Phonétique', conteudo: 'Alfabeto e fonética', nivel: 'iniciante' },
+    { id: 2, topico: 'Pronoms Personnels', conteudo: 'Pronomes pessoais (je, tu, il, elle, nous, vous, ils, elles)', nivel: 'iniciante' },
+    { id: 3, topico: 'Verbe ÊTRE et AVOIR', conteudo: 'Verbos être e avoir no presente', nivel: 'iniciante' },
+    { id: 4, topico: 'Articles Définis et Indéfinis', conteudo: 'Artigos definidos e indefinidos (le, la, les, un, une, des)', nivel: 'iniciante' },
+    { id: 5, topico: 'Vocabulaire - Famille', conteudo: 'Vocabulário básico - família', nivel: 'iniciante' },
+    { id: 6, topico: 'Nombres de 1 à 100', conteudo: 'Números de 1 a 100', nivel: 'iniciante' },
+    { id: 7, topico: 'Couleurs et Adjectifs Simples', conteudo: 'Cores e adjetivos básicos', nivel: 'iniciante' },
+    { id: 8, topico: 'Jours de la Semaine et Mois', conteudo: 'Dias da semana e meses', nivel: 'iniciante' },
+    { id: 9, topico: 'Questions Simples avec ÊTRE', conteudo: 'Perguntas simples com o verbo être', nivel: 'iniciante' },
+    { id: 10, topico: 'Adjectifs Possessifs', conteudo: 'Adjetivos possessivos (mon, ton, son, notre)', nivel: 'iniciante' },
+    { id: 11, topico: 'Présent des Verbes Réguliers', conteudo: 'Presente do indicativo - verbos regulares', nivel: 'iniciante' },
+    { id: 12, topico: 'Vocabulaire - Maison', conteudo: 'Vocabulário básico - casa', nivel: 'iniciante' },
+    { id: 13, topico: 'Adverbes de Fréquence', conteudo: 'Advérbios de frequência (toujours, jamais, parfois)', nivel: 'iniciante' },
+    { id: 14, topico: 'Présent - Questions et Négations', conteudo: 'Perguntas e negações no presente', nivel: 'iniciante' },
+    { id: 15, topico: 'Vocabulaire - Nourriture', conteudo: 'Vocabulário básico - comida', nivel: 'iniciante' },
+    { id: 16, topico: 'Prépositions de Lieu', conteudo: 'Preposições de lugar (dans, sur, sous)', nivel: 'iniciante' },
+    { id: 17, topico: 'Il y a / Il n\'y a pas', conteudo: 'Há / Não há', nivel: 'iniciante' },
+    { id: 18, topico: 'Vocabulaire - Vêtements', conteudo: 'Vocabulário básico - roupas', nivel: 'iniciante' },
+    { id: 19, topico: 'Pouvoir / Ne pas Pouvoir', conteudo: 'Verbo poder (je peux, je ne peux pas)', nivel: 'iniciante' },
+    { id: 20, topico: 'Révision - Niveau Débutant', conteudo: 'Revisão geral do nível iniciante', nivel: 'iniciante' },
+
+    // Nível Básico (21-40)
+    { id: 21, topico: 'Présent Progressif', conteudo: 'Estar + gerúndio (être en train de)', nivel: 'básico' },
+    { id: 22, topico: 'Vocabulaire - Professions', conteudo: 'Vocabulário - profissões', nivel: 'básico' },
+    { id: 23, topico: 'Passé Composé - Verbes Réguliers', conteudo: 'Passado composto - verbos regulares', nivel: 'básico' },
+    { id: 24, topico: 'Passé Composé - Verbes Irréguliers', conteudo: 'Passado composto - verbos irregulares', nivel: 'básico' },
+    { id: 25, topico: 'Imparfait', conteudo: 'Pretérito imperfeito', nivel: 'básico' },
+    { id: 26, topico: 'Expressions de Temps', conteudo: 'Expressões de tempo (hier, la semaine dernière)', nivel: 'básico' },
+    { id: 27, topico: 'Vocabulaire - Transport', conteudo: 'Vocabulário - transporte', nivel: 'básico' },
+    { id: 28, topico: 'Futur Proche', conteudo: 'Futuro próximo (aller + infinitif)', nivel: 'básico' },
+    { id: 29, topico: 'Adjectifs Comparatifs', conteudo: 'Adjetivos comparativos (plus que, moins que)', nivel: 'básico' },
+    { id: 30, topico: 'Adjectifs Superlatifs', conteudo: 'Adjetivos superlativos (le plus, le moins)', nivel: 'básico' },
+    { id: 31, topico: 'Vocabulaire - Météo', conteudo: 'Vocabulário - clima', nivel: 'básico' },
+    { id: 32, topico: 'Noms Comptables et Incomptables', conteudo: 'Substantivos contáveis e incontáveis', nivel: 'básico' },
+    { id: 33, topico: 'Quantifieurs: quelques, aucun, beaucoup, peu', conteudo: 'Quantificadores em francês', nivel: 'básico' },
+    { id: 34, topico: 'Vocabulaire - Sports', conteudo: 'Vocabulário - esportes', nivel: 'básico' },
+    { id: 35, topico: 'Verbe Devoir', conteudo: 'Verbo modal "devoir" (deveria)', nivel: 'básico' },
+    { id: 36, topico: 'Prépositions de Temps', conteudo: 'Preposições de tempo (en, à, depuis)', nivel: 'básico' },
+    { id: 37, topico: 'Vocabulaire - Animaux', conteudo: 'Vocabulário - animais', nivel: 'básico' },
+    { id: 38, topico: 'Mots Interrogatifs', conteudo: 'Palavras interrogativas (quoi, quand, où, pourquoi)', nivel: 'básico' },
+    { id: 39, topico: 'Conversations Quotidiennes', conteudo: 'Conversações básicas do dia a dia', nivel: 'básico' },
+    { id: 40, topico: 'Révision - Niveau Intermédiaire', conteudo: 'Revisão geral do nível básico', nivel: 'básico' },
+
+    // Nível Intermediário (41-60)
+    { id: 41, topico: 'Plus-que-Parfait', conteudo: 'Mais-que-perfeito composto', nivel: 'intermediário' },
+    { id: 42, topico: 'Futur Simple', conteudo: 'Futuro simples', nivel: 'intermediário' },
+    { id: 43, topico: 'Conditionnel Présent', conteudo: 'Condicional simples', nivel: 'intermediário' },
+    { id: 44, topico: 'Subjonctif Présent', conteudo: 'Modo subjuntivo no presente', nivel: 'intermediário' },
+    { id: 45, topico: 'Subjonctif Imparfait', conteudo: 'Modo subjuntivo no pretérito imperfeito (formal)', nivel: 'intermediário' },
+    { id: 46, topico: 'Phrases Conditionnelles - Types 1 et 2', conteudo: 'Frases condicionais tipos 1 e 2', nivel: 'intermediário' },
+    { id: 47, topico: 'Pronoms Relatifs', conteudo: 'Pronomes relativos (qui, que, dont)', nivel: 'intermediário' },
+    { id: 48, topico: 'Voix Passive', conteudo: 'Voz passiva', nivel: 'intermediário' },
+    { id: 49, topico: 'Verbes Modaux - Devoir, Pouvoir, Falloir', conteudo: 'Verbos modais de obrigação e possibilidade', nivel: 'intermediário' },
+    { id: 50, topico: 'Discours Indirect', conteudo: 'Discurso indireto', nivel: 'intermediário' },
+    { id: 51, topico: 'Pronoms Compléments d’Objet Direct et Indirect', conteudo: 'Pronomes objeto direto e indireto', nivel: 'intermediário' },
+    { id: 52, topico: 'Périphrases Verbales', conteudo: 'Locuções verbais comuns', nivel: 'intermediário' },
+    { id: 53, topico: 'Adverbes et Locutions Adverbiales', conteudo: 'Advérbios e expressões adverbiais', nivel: 'intermediário' },
+    { id: 54, topico: 'Connecteurs et Prépositions Avancés', conteudo: 'Conectores e preposições avançadas', nivel: 'intermediário' },
+    { id: 55, topico: 'Vocabulaire - Technologie', conteudo: 'Vocabulário relacionado à tecnologia', nivel: 'intermediário' },
+    { id: 56, topico: 'Vocabulaire - Santé', conteudo: 'Vocabulário relacionado à saúde', nivel: 'intermediário' },
+    { id: 57, topico: 'Expressions Idiomatiques de Base', conteudo: 'Expressões idiomáticas comuns', nivel: 'intermediário' },
+    { id: 58, topico: 'Analyse de Textes', conteudo: 'Análise de textos simples', nivel: 'intermediário' },
+    { id: 59, topico: 'Techniques de Conversation', conteudo: 'Técnicas de conversação e fluência', nivel: 'intermediário' },
+    { id: 60, topico: 'Révision - Niveau Intermédiaire', conteudo: 'Revisão geral do nível intermediário', nivel: 'intermediário' },
+
+    // Nível Avançado (61-80)
+    { id: 61, topico: 'Subjonctif Passé', conteudo: 'Subjuntivo no passado composto', nivel: 'avançado' },
+    { id: 62, topico: 'Subjonctif Plus-que-Parfait', conteudo: 'Subjuntivo no mais-que-perfeito composto', nivel: 'avançado' },
+    { id: 63, topico: 'Phrases Conditionnelles - Type 3', conteudo: 'Condicional tipo 3', nivel: 'avançado' },
+    { id: 64, topico: 'Voix Passive avec Être et Avoir', conteudo: 'Voz passiva com être e avoir', nivel: 'avançado' },
+    { id: 65, topico: 'Discours Indirect Avancé', conteudo: 'Discurso indireto avançado', nivel: 'avançado' },
+    { id: 66, topico: 'Expressions Idiomatiques Avancées', conteudo: 'Expressões idiomáticas avançadas', nivel: 'avançado' },
+    { id: 67, topico: 'Vocabulaire - Affaires', conteudo: 'Vocabulário de negócios', nivel: 'avançado' },
+    { id: 68, topico: 'Vocabulaire - Politique et Société', conteudo: 'Vocabulário político e social', nivel: 'avançado' },
+    { id: 69, topico: 'Analyse de Textes Littéraires', conteudo: 'Análise de textos literários', nivel: 'avançado' },
+    { id: 70, topico: 'Rédaction Académique', conteudo: 'Escrita acadêmica formal', nivel: 'avançado' },
+    { id: 71, topico: 'Techniques de Débat et Argumentation', conteudo: 'Técnicas para debate e argumentação', nivel: 'avançado' },
+    { id: 72, topico: 'Présentations Orales', conteudo: 'Preparação e execução de apresentações orais', nivel: 'avançado' },
+    { id: 73, topico: 'Grammaire Avancée - Accord des Temps et Modes', conteudo: 'Concordância avançada de tempos e modos', nivel: 'avançado' },
+    { id: 74, topico: 'Prononciation Avancée', conteudo: 'Aperfeiçoamento da pronúncia', nivel: 'avançado' },
+    { id: 75, topico: 'Expression Écrite Créative', conteudo: 'Escrita criativa', nivel: 'avançado' },
+    { id: 76, topico: 'Littérature Francophone', conteudo: 'Estudo da literatura francófona', nivel: 'avançado' },
+    { id: 77, topico: 'Culture et Traditions', conteudo: 'Cultura e tradições dos países francófonos', nivel: 'avançado' },
+    { id: 78, topico: 'Médias et Communication', conteudo: 'Vocabulário e análise de mídia', nivel: 'avançado' },
+    { id: 79, topico: 'Préparation aux Examens DELF/DALF', conteudo: 'Preparação para exames DELF/DALF', nivel: 'avançado' },
+    { id: 80, topico: 'Révision - Niveau Avancé', conteudo: 'Revisão geral do nível avançado', nivel: 'avançado' }
+  ],
+
+  'Mandarim': [
+    // Nível Iniciante (1-20)
+    { id: 1, topico: '拼音 (Pinyin)', conteudo: 'Sistema de romanização pinyin', nivel: 'iniciante' },
+    { id: 2, topico: '声调 (Tons)', conteudo: 'Os quatro tons do mandarim', nivel: 'iniciante' },
+    { id: 3, topico: '人称代词 (Pronomes)', conteudo: 'Pronomes pessoais (我, 你, 他, 她, 我们, 你们, 他们)', nivel: 'iniciante' },
+    { id: 4, topico: '基本问候语 (Saudações Básicas)', conteudo: 'Olá, adeus, obrigado, por favor', nivel: 'iniciante' },
+    { id: 5, topico: '数字 1-100 (Números)', conteudo: 'Números de 1 a 100', nivel: 'iniciante' },
+    { id: 6, topico: '日常用语 (Expressões Cotidianas)', conteudo: 'Sim, não, talvez, desculpe', nivel: 'iniciante' },
+    { id: 7, topico: '常见名词 (Substantivos Comuns)', conteudo: 'Casa, família, comida, roupas', nivel: 'iniciante' },
+    { id: 8, topico: '简单句型 (Estruturas Simples)', conteudo: 'Sujeito + verbo + objeto', nivel: 'iniciante' },
+    { id: 9, topico: '动词 是 (Verbo "Ser/Estar")', conteudo: 'Uso do verbo 是 (shì)', nivel: 'iniciante' },
+    { id: 10, topico: '疑问词 (Palavras Interrogativas)', conteudo: '什么, 谁, 哪里, 什么时候', nivel: 'iniciante' },
+    { id: 11, topico: '时间表达 (Expressões de Tempo)', conteudo: 'Hoje, amanhã, ontem', nivel: 'iniciante' },
+    { id: 12, topico: '位置词 (Preposições de Lugar)', conteudo: '上, 下, 里, 外', nivel: 'iniciante' },
+    { id: 13, topico: '形容词 (Adjetivos)', conteudo: 'Grande, pequeno, bonito, feio', nivel: 'iniciante' },
+    { id: 14, topico: '量词 (Classificadores)', conteudo: '个, 本, 只, 条', nivel: 'iniciante' },
+    { id: 15, topico: '基本动词 (Verbos Básicos)', conteudo: '去, 来, 看, 听', nivel: 'iniciante' },
+    { id: 16, topico: '否定句 (Frases Negativas)', conteudo: '不, 没有', nivel: 'iniciante' },
+    { id: 17, topico: '日常对话 (Diálogo Básico)', conteudo: 'Apresentação pessoal e perguntas simples', nivel: 'iniciante' },
+    { id: 18, topico: '时间和日期 (Datas e Horas)', conteudo: 'Como dizer datas e horas', nivel: 'iniciante' },
+    { id: 19, topico: '家庭成员 (Membros da Família)', conteudo: 'Pai, mãe, irmão, irmã', nivel: 'iniciante' },
+    { id: 20, topico: '复习 - 初级', conteudo: 'Revisão geral do nível iniciante', nivel: 'iniciante' },
+
+    // Nível Básico (21-40)
+    { id: 21, topico: '现在进行时 (Presente Contínuo)', conteudo: 'Estrutura com 正在 (zhèngzài)', nivel: 'básico' },
+    { id: 22, topico: '日常活动词汇 (Vocabulário de Atividades Cotidianas)', conteudo: 'Trabalhar, estudar, comer, dormir', nivel: 'básico' },
+    { id: 23, topico: '过去时表达 (Passado Simples)', conteudo: 'Uso de 了 (le)', nivel: 'básico' },
+    { id: 24, topico: '介词 (Preposições Comuns)', conteudo: '在, 从, 到, 对', nivel: 'básico' },
+    { id: 25, topico: '数量词和度量衡 (Quantificadores)', conteudo: '一些, 几个, 一些, 多少', nivel: 'básico' },
+    { id: 26, topico: '情感词汇 (Vocabulário de Emoções)', conteudo: 'Feliz, triste, cansado, animado', nivel: 'básico' },
+    { id: 27, topico: '问路和方向 (Perguntar Direções)', conteudo: 'Como pedir e dar direções', nivel: 'básico' },
+    { id: 28, topico: '将来时表达 (Futuro Próximo)', conteudo: 'Vai + verbo (要 yào)', nivel: 'básico' },
+    { id: 29, topico: '形容词比较级 (Comparativo)', conteudo: '更..., 比...', nivel: 'básico' },
+    { id: 30, topico: '形容词最高级 (Superlativo)', conteudo: '最...', nivel: 'básico' },
+    { id: 31, topico: '购物和价格 (Compras e Preços)', conteudo: 'Vocabulário para compras', nivel: 'básico' },
+    { id: 32, topico: '健康与身体 (Saúde e Corpo)', conteudo: 'Partes do corpo e saúde', nivel: 'básico' },
+    { id: 33, topico: '交通工具 (Meios de Transporte)', conteudo: 'Carro, ônibus, bicicleta', nivel: 'básico' },
+    { id: 34, topico: '爱好和兴趣 (Hobbies e Interesses)', conteudo: 'Ler, esportes, música', nivel: 'básico' },
+    { id: 35, topico: '表达建议 (Expressar Sugestões)', conteudo: '应该 (yīnggāi)', nivel: 'básico' },
+    { id: 36, topico: '时间介词 (Preposições de Tempo)', conteudo: '在..., 从...到...', nivel: 'básico' },
+    { id: 37, topico: '假设句 (Frases Condicionais)', conteudo: '如果..., 就...', nivel: 'básico' },
+    { id: 38, topico: '日常对话扩展 (Diálogos Cotidianos)', conteudo: 'Situações mais elaboradas', nivel: 'básico' },
+    { id: 39, topico: '方向和位置 (Direções e Localizações)', conteudo: 'Vocabulário espacial avançado', nivel: 'básico' },
+    { id: 40, topico: '复习 - 中级', conteudo: 'Revisão geral do nível básico', nivel: 'básico' },
+
+    // Nível Intermediário (41-60)
+    { id: 41, topico: '过去进行时 (Passado Contínuo)', conteudo: '正在 + 了', nivel: 'intermediário' },
+    { id: 42, topico: '被动语态 (Voz Passiva)', conteudo: 'Uso de 被 (bèi)', nivel: 'intermediário' },
+    { id: 43, topico: '更复杂的句型 (Estruturas Mais Complexas)', conteudo: 'Uso de 连..., 也...', nivel: 'intermediário' },
+    { id: 44, topico: '状语从句 (Orações Adverbiais)', conteudo: 'Tempo, causa, condição', nivel: 'intermediário' },
+    { id: 45, topico: '连词和连接词 (Conjunções)', conteudo: '因为, 所以, 虽然, 但是', nivel: 'intermediário' },
+    { id: 46, topico: '复合句 (Frases Compostas)', conteudo: 'Ordem e uso correto', nivel: 'intermediário' },
+    { id: 47, topico: '口语表达技巧 (Técnicas de Conversação)', conteudo: 'Fluência e expressões idiomáticas', nivel: 'intermediário' },
+    { id: 48, topico: '写作基础 (Fundamentos da Escrita)', conteudo: 'Estrutura de textos simples', nivel: 'intermediário' },
+    { id: 49, topico: '日常生活词汇扩展', conteudo: 'Vocabulário cotidiano avançado', nivel: 'intermediário' },
+    { id: 50, topico: '商务用语基础', conteudo: 'Vocabulário básico de negócios', nivel: 'intermediário' },
+    { id: 51, topico: '比较复杂的动词时态', conteudo: '完成时与进行时结合', nivel: 'intermediário' },
+    { id: 52, topico: '数量词进阶', conteudo: '更复杂的量词用法', nivel: 'intermediário' },
+    { id: 53, topico: '礼貌表达', conteudo: 'Formas formais e informais', nivel: 'intermediário' },
+    { id: 54, topico: '成语基础 (Expressões Idiomáticas)', conteudo: 'Expressões comuns básicas', nivel: 'intermediário' },
+    { id: 55, topico: '口语练习 (Prática Oral)', conteudo: 'Simulações de situações reais', nivel: 'intermediário' },
+    { id: 56, topico: '阅读理解 (Compreensão de Leitura)', conteudo: 'Textos e perguntas', nivel: 'intermediário' },
+    { id: 57, topico: '听力训练 (Treino de Audição)', conteudo: 'Áudios e exercícios', nivel: 'intermediário' },
+    { id: 58, topico: '写作技巧提升', conteudo: 'Textos mais elaborados', nivel: 'intermediário' },
+    { id: 59, topico: '文化与习俗', conteudo: 'Cultura e costumes chineses', nivel: 'intermediário' },
+    { id: 60, topico: '复习 - 中高级', conteudo: 'Revisão geral do nível intermediário', nivel: 'intermediário' },
+
+    // Nível Avançado (61-80)
+    { id: 61, topico: '高级语法 (Gramática Avançada)', conteudo: 'Estruturas gramaticais complexas', nivel: 'avançado' },
+    { id: 62, topico: '文学作品分析', conteudo: 'Análise de textos literários', nivel: 'avançado' },
+    { id: 63, topico: '正式写作', conteudo: 'Redação formal e acadêmica', nivel: 'avançado' },
+    { id: 64, topico: '高级听力理解', conteudo: 'Audição de materiais avançados', nivel: 'avançado' },
+    { id: 65, topico: '口语表达流利度提升', conteudo: 'Aprimoramento da fluência oral', nivel: 'avançado' },
+    { id: 66, topico: '商务汉语', conteudo: 'Mandarim para negócios', nivel: 'avançado' },
+    { id: 67, topico: '新闻和媒体', conteudo: 'Vocabulário e análise de notícias', nivel: 'avançado' },
+    { id: 68, topico: '演讲技巧', conteudo: 'Técnicas de apresentação e discurso', nivel: 'avançado' },
+    { id: 69, topico: '汉语方言', conteudo: 'Introdução aos dialetos chineses', nivel: 'avançado' },
+    { id: 70, topico: '文化深度', conteudo: 'Estudo aprofundado da cultura chinesa', nivel: 'avançado' },
+    { id: 71, topico: '高级写作技巧', conteudo: 'Técnicas avançadas de escrita', nivel: 'avançado' },
+    { id: 72, topico: '翻译技巧', conteudo: 'Técnicas de tradução mandarim-português', nivel: 'avançado' },
+    { id: 73, topico: '汉语考试准备', conteudo: 'Preparação para exames HSK', nivel: 'avançado' },
+    { id: 74, topico: '跨文化交流', conteudo: 'Comunicação intercultural', nivel: 'avançado' },
+    { id: 75, topico: '高级词汇', conteudo: 'Vocabulário avançado e nuances', nivel: 'avançado' },
+    { id: 76, topico: '文学与历史', conteudo: 'Estudo da literatura e história chinesa', nivel: 'avançado' },
+    { id: 77, topico: '新闻写作', conteudo: 'Redação jornalística em mandarim', nivel: 'avançado' },
+    { id: 78, topico: '口译技巧', conteudo: 'Técnicas de interpretação simultânea', nivel: 'avançado' },
+    { id: 79, topico: '专业领域语言', conteudo: 'Mandarim em áreas técnicas e científicas', nivel: 'avançado' },
+    { id: 80, topico: '复习 - 高级', conteudo: 'Revisão geral do nível avançado', nivel: 'avançado' }
+  ]
+};
+
+export function obterProximaAula(idioma, aulaAtual = 0) {
+  const aulas = progressaoAulas[idioma] || progressaoAulas['Inglês'];
+  return aulas[aulaAtual] || aulas[0];
+}
+
+export function obterAulaPorId(idioma, id) {
+  const aulas = progressaoAulas[idioma] || progressaoAulas['Inglês'];
+  return aulas.find(aula => aula.id === id);
+}
+
+export function calcularProgressoNivel(aulaAtual, idioma) {
+  const aulas = progressaoAulas[idioma] || progressaoAulas['Inglês'];
+  const aulaInfo = aulas[aulaAtual - 1];
+
+  if (!aulaInfo) return { nivel: 'iniciante', progresso: 0 };
+
+  const aulasPorNivel = {
+    'iniciante': 20,
+    'básico': 20,
+    'intermediário': 20,
+    'avançado': 20
+  };
+
+  let progressoNivel = 0;
+  if (aulaInfo.nivel === 'iniciante') {
+    progressoNivel = (aulaAtual / aulasPorNivel.iniciante) * 100;
+  } else if (aulaInfo.nivel === 'básico') {
+    progressoNivel = ((aulaAtual - 20) / aulasPorNivel.básico) * 100;
+  } else if (aulaInfo.nivel === 'intermediário') {
+    progressoNivel = ((aulaAtual - 40) / aulasPorNivel.intermediário) * 100;
+  } else if (aulaInfo.nivel === 'avançado') {
+    progressoNivel = ((aulaAtual - 60) / aulasPorNivel.avançado) * 100;
+  }
+
+  return {
+    nivel: aulaInfo.nivel,
+    progresso: Math.min(100, Math.max(0, progressoNivel))
+  };
+}

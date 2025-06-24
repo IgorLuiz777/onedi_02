@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nivel VARCHAR(20) DEFAULT 'iniciante',
   pontuacao INTEGER DEFAULT 0,
   streak_dias INTEGER DEFAULT 0,
+  aula_atual INTEGER DEFAULT 1,
   ultima_atividade TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -28,7 +29,8 @@ CREATE TABLE IF NOT EXISTS progresso_licoes (
   tempo_gasto INTEGER DEFAULT 0, -- em minutos
   completada BOOLEAN DEFAULT FALSE,
   data_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  data_conclusao TIMESTAMP NULL
+  data_conclusao TIMESTAMP NULL,
+  UNIQUE(usuario_id, licao_id, modo_estudo)
 );
 
 -- Tabela de vocabulário aprendido
@@ -42,7 +44,8 @@ CREATE TABLE IF NOT EXISTS vocabulario_usuario (
   proxima_revisao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   vezes_vista INTEGER DEFAULT 1,
   vezes_acertada INTEGER DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(usuario_id, palavra, idioma)
 );
 
 -- Tabela de sessões de estudo
@@ -57,9 +60,37 @@ CREATE TABLE IF NOT EXISTS sessoes_estudo (
   data_sessao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabela de histórico de aulas (nova)
+CREATE TABLE IF NOT EXISTS historico_aulas (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER REFERENCES usuarios(id),
+  aula_id INTEGER NOT NULL,
+  topico VARCHAR(200) NOT NULL,
+  conteudo TEXT NOT NULL,
+  nivel VARCHAR(20) NOT NULL,
+  completada BOOLEAN DEFAULT FALSE,
+  tempo_gasto INTEGER DEFAULT 0,
+  data_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  data_conclusao TIMESTAMP NULL,
+  UNIQUE(usuario_id, aula_id)
+);
+
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_usuarios_telefone ON usuarios(telefone);
 CREATE INDEX IF NOT EXISTS idx_progresso_usuario ON progresso_licoes(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulario_usuario ON vocabulario_usuario(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulario_revisao ON vocabulario_usuario(proxima_revisao);
 CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes_estudo(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_historico_usuario ON historico_aulas(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_historico_aula ON historico_aulas(aula_id);
+
+-- Adiciona coluna aula_atual se não existir
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'aula_atual'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN aula_atual INTEGER DEFAULT 1;
+  END IF;
+END $$;

@@ -3,32 +3,40 @@ import dotenv from 'dotenv';
 import {
   consultarUsuario,
   salvarUsuario,
-  atualizarStreak
+  atualizarStreak,
+  salvarHistoricoAula
 } from './src/database.js';
 import {
   detectarGenero,
+  enviarMensagemCompleta,
   enviarOpcoesMensagem,
   processarComandoEspecial,
   mostrarMenuPrincipal,
+  mostrarMenuAulaGuiada,
   mostrarProgresso,
+  mostrarInfoAulaAtual,
+  avancarProximaAula,
   validarIdioma,
   validarModoEstudo,
   calcularNivel,
   normalizarTexto
 } from './src/messageHandler.js';
-import { gerarTraducao } from './src/studyModes.js';
-import { gerarAudioProfessor } from './src/audioService.js';
+import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
+import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
+import { mp3ToBase64 } from './src/mp3ToBase64.js';
 import {
   processarModoEstudo,
   iniciarRevisaoVocabulario,
   SessaoAulaGuiada
 } from './src/studyModes.js';
+import { obterProximaAula } from './src/lessonProgression.js';
 
 dotenv.config();
 
 const estados = {};
 const sessoesAulaGuiada = {};
 const lastResponses = {};
+const aguardandoAudio = {}; // Para controlar quando estamos esperando áudio do aluno
 
 wppconnect
   .create({
@@ -38,7 +46,7 @@ wppconnect
   })
   .then((client) => {
     console.log('🚀 Conectado ao WhatsApp!');
-    console.log('📚 Sistema de Ensino de Idiomas Ativo');
+    console.log('📚 Sistema de Ensino de Idiomas com Aula Guiada Interativa Ativo');
 
     client.onMessage(async (message) => {
       const user = message.from;
@@ -46,8 +54,16 @@ wppconnect
       if (user !== '5511980483504@c.us') return;
       if (message.isGroupMsg || user.endsWith('@status') || user === 'status@broadcast') return;
 
-      console.log(`📱 Mensagem de ${user}: ${message.body}`);
-      console.log(`📱 SelectedRowId: ${message.selectedRowId}`);
+      console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
+      console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
+
+      // Processa mensagens de áudio do aluno
+      if (message.type === 'ptt' || message.type === 'audio') {
+        await client.startTyping(user); // Inicia feedback de digitando
+        await processarAudioDoAluno(client, user, message);
+        await client.stopTyping(user); // Para feedback de digitando
+        return;
+      }
 
       // Trata ações de opções rápidas (Traduzir/Áudio)
       const textoMsg = message.body ? message.body.trim().toLowerCase() : '';
@@ -60,10 +76,13 @@ wppconnect
 
         if (lastResponses[user]) {
           try {
+            await client.startTyping(user);
             console.log(`🔄 Traduzindo: ${lastResponses[user]}`);
             const traducao = await gerarTraducao(lastResponses[user], estados[user]?.idioma || 'Inglês');
+            await client.stopTyping(user);
             await client.sendText(user, `📝 *Tradução:* ${traducao}`);
           } catch (err) {
+            await client.stopTyping(user);
             console.error('Erro ao traduzir:', err);
             await client.sendText(user, 'Erro ao traduzir o texto.');
           }
@@ -84,6 +103,7 @@ wppconnect
 
         if (lastResponses[user]) {
           try {
+            await client.startTyping(user);
             console.log(`🔊 Gerando áudio otimizado: ${lastResponses[user]}`);
             const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -97,9 +117,11 @@ wppconnect
             );
 
             const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+            await client.stopTyping(user);
             await client.sendPttFromBase64(user, audioBase64);
             console.log(`✅ Áudio enviado com sucesso (${audioBuffer.length} bytes)`);
           } catch (err) {
+            await client.stopTyping(user);
             console.error('❌ Erro ao gerar áudio:', err);
             await client.sendText(user, 'Erro ao gerar o áudio. Tente novamente em alguns segundos.');
           }
@@ -110,9 +132,11 @@ wppconnect
       }
 
       try {
+        await client.startTyping(user);
         const comando = processarComandoEspecial(message.body);
         if (comando) {
           await processarComando(client, user, comando);
+          await client.stopTyping(user);
           return;
         }
 
@@ -128,7 +152,9 @@ wppconnect
               etapa: 3, // Vai direto para seleção de modo
               nivel: usuarioBanco.nivel,
               pontuacao: usuarioBanco.pontuacao,
-              streak: usuarioBanco.streak_dias
+              streak: usuarioBanco.streak_dias,
+              aula_atual: usuarioBanco.aula_atual || 1,
+              etapaAulaAtual: 'EXPLICACAO_INICIAL'
             };
 
             const novoStreak = await atualizarStreak(user);
@@ -145,34 +171,101 @@ wppconnect
 
         if (estado.etapa === 0) {
           await iniciarCadastro(client, user, estado);
+          await client.stopTyping(user);
           return;
         }
 
         if (estado.etapa === 1) {
           await processarNome(client, user, estado, message.body);
+          await client.stopTyping(user);
           return;
         }
 
         if (estado.etapa === 2) {
           await processarIdioma(client, user, estado, message);
+          await client.stopTyping(user);
           return;
         }
 
         if (estado.etapa === 3) {
           await processarSelecaoModoEstudo(client, user, estado, message);
+          await client.stopTyping(user);
           return;
         }
 
         if (estado.etapa === 4) {
           await processarEstudo(client, user, estado, message, usuarioBanco);
+          await client.stopTyping(user);
           return;
         }
 
       } catch (error) {
+        await client.stopTyping(user);
         console.error('❌ Erro ao processar mensagem:', error);
         await client.sendText(user, 'Desculpe, ocorreu um erro. Tente novamente ou digite /menu para voltar ao início.');
       }
     });
+
+    async function processarAudioDoAluno(client, user, message) {
+      try {
+        if (!aguardandoAudio[user]) {
+          await client.sendText(user, '🎤 Recebi seu áudio! Mas no momento não estou esperando uma gravação. Use o modo Aula Guiada para exercícios de pronúncia!');
+          return;
+        }
+
+        console.log('🎤 Processando áudio do aluno...');
+        await client.sendText(user, '🔄 Analisando seu áudio... Um momento!');
+
+        // Baixa o áudio
+        const audioBuffer = await client.downloadMedia(message);
+
+        // Processa o áudio usando Whisper
+        const resultadoTranscricao = await processarAudioAluno(audioBuffer, estados[user]?.idioma || 'Inglês');
+
+        // Analisa a pronúncia
+        const textoEsperado = aguardandoAudio[user].textoEsperado;
+        const analise = await analisarPronunciaIA(resultadoTranscricao.texto, textoEsperado, estados[user]?.idioma || 'Inglês');
+
+        // Monta resposta detalhada
+        const feedback = `
+🎤 **Análise da sua Pronúncia**
+
+📝 **Você disse:** "${resultadoTranscricao.texto}"
+🎯 **Esperado:** "${textoEsperado}"
+
+📊 **Pontuação:** ${analise.pontuacao}/100
+
+${analise.analiseCompleta}
+
+${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
+  analise.pontuacao >= 60 ? '👍 Boa pronúncia, continue praticando!' :
+  '💪 Continue praticando, você vai melhorar!'}
+        `;
+
+        await client.sendText(user, feedback);
+
+        // Adiciona à sessão se estiver em aula guiada
+        if (sessoesAulaGuiada[user]) {
+          sessoesAulaGuiada[user].adicionarAudioAnalisado(analise);
+          sessoesAulaGuiada[user].incrementarQuestao(analise.pontuacao >= 60);
+        }
+
+        // Limpa o estado de espera de áudio
+        delete aguardandoAudio[user];
+
+        // Continua a aula se estiver no modo aula guiada
+        if (estados[user]?.modo === 'aula_guiada') {
+          setTimeout(async () => {
+            await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.');
+          }, 2000);
+        }
+
+      } catch (error) {
+        console.error('❌ Erro ao processar áudio do aluno:', error);
+        await client.sendText(user, '❌ Desculpe, não consegui processar seu áudio. Tente gravar novamente!');
+        delete aguardandoAudio[user];
+      }
+    }
 
     async function processarComando(client, user, comando) {
       const usuarioBanco = await consultarUsuario(user);
@@ -181,12 +274,37 @@ wppconnect
         return;
       }
 
+      // Atualiza o estado se necessário
+      if (!estados[user]) {
+        estados[user] = {
+          nome: usuarioBanco.nome,
+          genero: usuarioBanco.genero,
+          idioma: usuarioBanco.idioma,
+          professor: usuarioBanco.professor,
+          etapa: 3,
+          nivel: usuarioBanco.nivel,
+          pontuacao: usuarioBanco.pontuacao,
+          streak: usuarioBanco.streak_dias,
+          aula_atual: usuarioBanco.aula_atual || 1,
+          etapaAulaAtual: 'EXPLICACAO_INICIAL'
+        };
+      }
+
       switch (comando) {
         case 'menu_principal':
-          await mostrarMenuPrincipal(client, user, usuarioBanco);
+          await mostrarMenuPrincipal(client, user, estados[user]);
           break;
         case 'ver_progresso':
           await mostrarProgresso(client, user, usuarioBanco);
+          break;
+        case 'info_aula_atual':
+          await mostrarInfoAulaAtual(client, user, usuarioBanco);
+          break;
+        case 'proxima_aula':
+          await avancarProximaAula(client, user, usuarioBanco);
+          // Atualiza o estado local
+          estados[user].aula_atual = (usuarioBanco.aula_atual || 1) + 1;
+          estados[user].etapaAulaAtual = 'EXPLICACAO_INICIAL'; // Reset da etapa
           break;
         case 'revisar_vocabulario':
           const revisao = await iniciarRevisaoVocabulario(usuarioBanco.id, usuarioBanco.idioma);
@@ -205,7 +323,7 @@ wppconnect
     }
 
     async function iniciarCadastro(client, user, estado) {
-      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente!\n\n📝 Para começar, qual é o seu nome?');
+      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n📝 Para começar, qual é o seu nome?');
       estado.etapa = 1;
     }
 
@@ -218,7 +336,7 @@ wppconnect
       const nomeAssistente = genero === 'masculino' ? 'Isaias' : 'Rute';
       estado.professor = nomeAssistente;
 
-      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas!`);
+      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!`);
 
       await client.sendListMessage(user, {
         buttonText: 'Escolher idioma',
@@ -249,6 +367,8 @@ wppconnect
       }
 
       estado.idioma = idioma;
+      estado.aula_atual = 1; // Inicia na primeira aula
+      estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
 
       await salvarUsuario(user, {
         nome: estado.nome,
@@ -258,10 +378,16 @@ wppconnect
         etapa: 3,
         nivel: 'iniciante',
         pontuacao: 0,
-        streak_dias: 1
+        streak_dias: 1,
+        aula_atual: 1
       });
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu aprender ${idioma}.\n\nAgora vamos começar sua jornada de aprendizado!`);
+      // Salva a primeira aula no histórico
+      const primeiraAula = obterProximaAula(idioma, 0);
+      const usuarioBanco = await consultarUsuario(user);
+      await salvarHistoricoAula(usuarioBanco.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
+
+      await client.sendText(user, `🎉 Excelente! Você escolheu aprender ${idioma}.\n\n🚀 Agora vamos começar sua jornada de aprendizado com IA avançada!`);
 
       await mostrarMenuPrincipal(client, user, estado);
       estado.etapa = 3;
@@ -271,25 +397,37 @@ wppconnect
       const modoInput = message.selectedRowId || message.body.trim().split('\n')[0];
       const modo = validarModoEstudo(modoInput);
 
+      console.log(`🔍 Validando modo: "${modoInput}" -> "${modo}"`);
+
       if (!modo) {
-        await client.sendText(user, '❌ Por favor, selecione um modo de estudo válido.');
+        await client.sendText(user, '❌ Por favor, selecione um modo de estudo válido clicando no botão.');
         return;
       }
 
-      estado.modo = normalizarTexto(modoInput.replace(' ', '_'));
+      estado.modo = modo;
 
-      const mensagensModo = {
-        'aula_guiada': '📚 Modo Aula Guiada ativado!\n\nVou te guiar passo a passo. Você tem 30 minutos ou 20 questões por sessão.\n\nVamos começar? Envie qualquer mensagem!',
-        'pratica_livre': '💬 Modo Prática Livre ativado!\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\nSobre o que você gostaria de conversar?',
-        'modo_professor': '👨‍🏫 Modo Professor ativado!\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\nQual tópico você gostaria que eu explicasse?',
-        'modo_vocabulario': '📖 Modo Vocabulário ativado!\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\nQue tipo de vocabulário você quer aprender hoje?'
-      };
+      const usuarioBanco = await consultarUsuario(user);
 
-      await client.sendText(user, mensagensModo[estado.modo] || 'Modo selecionado! Vamos começar?');
+      // Se for aula guiada, mostra informações detalhadas
+      if (modo === 'aula_guiada') {
+        await mostrarMenuAulaGuiada(client, user, estado);
 
-      if (estado.modo === 'aula_guiada') {
-        const usuarioBanco = await consultarUsuario(user);
+        // Cria sessão de aula guiada aprimorada
         sessoesAulaGuiada[user] = new SessaoAulaGuiada(usuarioBanco.id, estado.idioma);
+
+        // Reset da etapa da aula
+        estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
+      } else {
+        // Para outros modos, mensagens simples
+        const mensagensModo = {
+          'pratica_livre': '💬 Modo Prática Livre ativado!\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\nSobre o que você gostaria de conversar?',
+
+          'modo_professor': '👨‍🏫 Modo Professor ativado!\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\nQual tópico você gostaria que eu explicasse?',
+
+          'modo_vocabulario': '📖 Modo Vocabulário ativado!\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\nQue tipo de vocabulário você quer aprender hoje?'
+        };
+
+        await client.sendText(user, mensagensModo[modo] || 'Modo selecionado! Vamos começar?');
       }
 
       estado.etapa = 4;
@@ -302,15 +440,67 @@ wppconnect
         console.log(`🎓 Processando estudo: ${message.body}`);
         const resultado = await processarModoEstudo(estado, message.body, usuarioBanco);
 
+        // Salva a última resposta para tradução/áudio
         lastResponses[user] = resultado.resposta;
         console.log(`💾 Salvando resposta para tradução/áudio: ${resultado.resposta.substring(0, 50)}...`);
 
+        // Envia a mensagem principal
         await client.sendText(user, resultado.resposta);
 
-        await enviarOpcoesMensagem(client, user, estado.idioma);
+        // Se há imagem gerada, envia a imagem
+        if (resultado.imagemGerada) {
+          try {
+            await client.sendImage(user, resultado.imagemGerada.url, 'imagem-aula',
+              `🖼️ Imagem da aula: ${resultado.imagemGerada.topico}`);
+
+            if (sessoesAulaGuiada[user]) {
+              sessoesAulaGuiada[user].adicionarImagemGerada(resultado.imagemGerada);
+            }
+          } catch (imgError) {
+            console.error('Erro ao enviar imagem:', imgError);
+            await client.sendText(user, '🖼️ Não foi possível enviar a imagem, mas vamos continuar com a aula!');
+          }
+        }
+
+        // Se há solicitação de áudio, configura o estado de espera
+        if (resultado.audioSolicitado) {
+          aguardandoAudio[user] = {
+            textoEsperado: resultado.audioSolicitado,
+            timestamp: Date.now()
+          };
+
+          // Remove a espera após 5 minutos se não receber áudio
+          setTimeout(() => {
+            if (aguardandoAudio[user]) {
+              delete aguardandoAudio[user];
+            }
+          }, 5 * 60 * 1000);
+        }
+
+        // Envia as opções de tradução e áudio apenas se não estiver esperando áudio
+        if (!aguardandoAudio[user]) {
+          await enviarOpcoesMensagem(client, user, estado.idioma);
+        }
+
+        // Se for aula guiada, salva o progresso da aula atual
+        if (estado.modo === 'aula_guiada' && resultado.aulaAtual) {
+          await salvarHistoricoAula(
+            usuarioBanco.id,
+            resultado.aulaAtual.id,
+            resultado.aulaAtual.topico,
+            resultado.aulaAtual.conteudo,
+            resultado.aulaAtual.nivel
+          );
+        }
 
         if (estado.modo === 'aula_guiada' && sessoesAulaGuiada[user]) {
           const sessao = sessoesAulaGuiada[user];
+
+          // Adiciona a etapa completada
+          if (estado.etapaAulaAtual) {
+            sessao.adicionarEtapaCompletada(estado.etapaAulaAtual);
+          }
+
           sessao.incrementarQuestao(true);
 
           const limites = sessao.verificarLimites();
@@ -319,16 +509,28 @@ wppconnect
             const resultadoSessao = await sessao.finalizarSessao();
 
             await client.sendText(user, `
-                🎉 *Sessão Concluída!*
+🎉 **Sessão de Aula Guiada Interativa Concluída!**
 
-                📊 *Resultado:*
-                • Questões respondidas: ${resultadoSessao.questoesRespondidas}
-                • Questões corretas: ${resultadoSessao.questoesCorretas}
-                • Aproveitamento: ${resultadoSessao.aproveitamento}%
-                • Pontos ganhos: ${resultadoSessao.pontosGanhos}
-                • Tempo de estudo: ${resultadoSessao.duracaoMinutos} minutos
+📊 **Resultado da Sessão:**
+• Questões respondidas: ${resultadoSessao.questoesRespondidas}
+• Questões corretas: ${resultadoSessao.questoesCorretas}
+• Aproveitamento: ${resultadoSessao.aproveitamento}%
+• Etapas completadas: ${resultadoSessao.etapasCompletas}/11
+• Imagens analisadas: ${resultadoSessao.imagensGeradas}
+• Áudios analisados: ${resultadoSessao.audiosAnalisados}
 
-                Parabéns pelo seu progresso! 🚀
+💰 **Pontuação Detalhada:**
+• Pontos base: ${resultadoSessao.bonusDetalhado.pontosBase}
+• Bônus etapas: ${resultadoSessao.bonusDetalhado.bonusEtapas}
+• Bônus imagens: ${resultadoSessao.bonusDetalhado.bonusImagens}
+• Bônus áudios: ${resultadoSessao.bonusDetalhado.bonusAudios}
+• **Total: ${resultadoSessao.pontosGanhos} pontos!**
+
+⏱️ Tempo de estudo: ${resultadoSessao.duracaoMinutos} minutos
+
+🚀 **Parabéns pelo seu progresso interativo!**
+
+💡 *Dica: Use /proxima para avançar para a próxima aula quando estiver pronto!*
             `);
 
             const novaPontuacao = (usuarioBanco.pontuacao || 0) + resultadoSessao.pontosGanhos;
@@ -342,14 +544,16 @@ wppconnect
             });
 
             delete sessoesAulaGuiada[user];
+            delete aguardandoAudio[user]; // Limpa qualquer espera de áudio
             estado.etapa = 3;
+            estado.etapaAulaAtual = 'EXPLICACAO_INICIAL'; // Reset
 
             setTimeout(() => {
               mostrarMenuPrincipal(client, user, estado);
-            }, 2000);
+            }, 3000);
 
           } else {
-            await client.sendText(user, `⏱️ Questões restantes: ${limites.questoesRestantes} | Tempo restante: ${limites.tempoRestante} min`);
+            await client.sendText(user, `⏱️ **Progresso da Sessão Interativa:**\n📝 Questões restantes: ${limites.questoesRestantes}\n⏰ Tempo restante: ${limites.tempoRestante} min\n🎯 Etapas completadas: ${limites.etapasCompletas}/11`);
           }
         }
 
@@ -363,29 +567,55 @@ wppconnect
 
     async function mostrarAjuda(client, user) {
       const textoAjuda = `
-          🆘 *Central de Ajuda - ONEDI*
+🆘 **Central de Ajuda - ONEDI IA**
 
-          *Comandos disponíveis:*
-          • /menu - Voltar ao menu principal
-          • /progresso - Ver seu progresso
-          • /vocabulario - Revisar palavras aprendidas
-          • /nivel - Verificar seu nível atual
-          • /streak - Ver sua sequência de dias
-          • /ajuda - Mostrar esta ajuda
+**Comandos disponíveis:**
+• /menu - Voltar ao menu principal
+• /progresso - Ver seu progresso detalhado
+• /aula - Ver informações da aula atual
+• /proxima - Avançar para a próxima aula
+• /vocabulario - Revisar palavras aprendidas
+• /nivel - Verificar seu nível atual
+• /streak - Ver sua sequência de dias
+• /ajuda - Mostrar esta ajuda
 
-          *Modos de Estudo:*
-          📚 *Aula Guiada* - Lições estruturadas
-          💬 *Prática Livre* - Conversação natural
-          👨‍🏫 *Modo Professor* - Explicações detalhadas
-          📖 *Modo Vocabulário* - Aprendizado de palavras
+**Modos de Estudo:**
+📚 **Aula Guiada Interativa** - Sistema completo com:
+   • Explicações bilíngues (idioma + português)
+   • Exercícios de múltipla escolha
+   • Geração de imagens educativas
+   • Análise de pronúncia com IA
+   • Correção gramatical inteligente
+   • Progressão estruturada
 
-          *Dicas:*
-          • Estude todos os dias para manter sua sequência
-          • Use o áudio para melhorar a pronúncia
-          • Leia as traduções para entender melhor
-          • Pratique diferentes modos de estudo
+💬 **Prática Livre** - Conversação natural
+👨‍🏫 **Modo Professor** - Explicações detalhadas
+📖 **Modo Vocabulário** - Aprendizado de palavras
 
-          Precisa de mais ajuda? Entre em contato conosco! 📞
+**Recursos de IA Avançada:**
+🖼️ **Geração de Imagens** - Imagens educativas personalizadas
+🎤 **Análise de Pronúncia** - Feedback detalhado de fala
+🔊 **Text-to-Speech** - Áudio de alta qualidade
+📝 **Correção Inteligente** - IA corrige e explica erros
+🌐 **Tradução Instantânea** - Tradução contextual
+
+**Como usar a Aula Guiada Interativa:**
+1. Selecione "Aula Guiada Contínua"
+2. Siga as instruções do professor IA
+3. Responda às perguntas de múltipla escolha
+4. Descreva as imagens geradas
+5. Grave áudios quando solicitado
+6. Forme frases para correção
+7. Complete todas as etapas da aula
+
+**Dicas:**
+• Estude todos os dias para manter sua sequência
+• Use o áudio para melhorar a pronúncia
+• Grave áudios claros para melhor análise
+• Descreva as imagens com detalhes
+• Complete as aulas em sequência
+
+Precisa de mais ajuda? Entre em contato conosco! 📞
       `;
 
       await client.sendText(user, textoAjuda);
@@ -395,6 +625,19 @@ wppconnect
   .catch((error) => {
     console.error('❌ Erro ao conectar:', error);
   });
+
+// Limpeza periódica de estados de áudio antigos
+setInterval(() => {
+  const agora = Date.now();
+  const cincoMinutos = 5 * 60 * 1000;
+
+  for (const user in aguardandoAudio) {
+    if (agora - aguardandoAudio[user].timestamp > cincoMinutos) {
+      delete aguardandoAudio[user];
+      console.log(`🧹 Limpou estado de áudio antigo para ${user}`);
+    }
+  }
+}, 60 * 1000); // Executa a cada minuto
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Erro não tratado:', err);
@@ -406,4 +649,4 @@ process.on('unhandledRejection', (reason, promise) => {
   // Não encerra o processo, apenas loga o erro
 });
 
-console.log('🔄 Iniciando sistema...');
+console.log('🔄 Iniciando sistema de aula guiada interativa com IA completa...');
