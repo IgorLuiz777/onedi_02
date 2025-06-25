@@ -21,71 +21,122 @@ const promptsModos = {
       HISTÓRICO DE AULAS ANTERIORES:
       ${historicoAulas}
 
-      METODOLOGIA DE AULA GUIADA INTERATIVA:
+      METODOLOGIA DE AULA GUIADA INTERATIVA APRIMORADA:
 
-      ${{'intermediario': true, 'avançado': true, 'avancado': true}[nivel?.toLowerCase()] ? `IMPORTANTE: A partir do nível intermediário, conduza a aula majoritariamente em inglês. Use português apenas para explicações essenciais ou quando o aluno demonstrar dificuldade. Todas as instruções, perguntas e feedbacks devem ser preferencialmente em inglês.` : ''}
+      ${nivel === 'intermediário' || nivel === 'avançado' ?
+        `IMPORTANTE: A partir do nível intermediário, conduza a aula majoritariamente em ${idioma}. Use português apenas para explicações essenciais ou quando o aluno demonstrar dificuldade. Todas as instruções, perguntas e feedbacks devem ser preferencialmente em ${idioma}.` :
+        `IMPORTANTE: Para níveis iniciante e básico, use uma abordagem bilíngue equilibrada - explique conceitos em ${idioma} e depois em português para garantir compreensão.`
+      }
 
-      🎯 ESTRUTURA DA AULA (siga esta sequência):
-      1. EXPLICAÇÃO_INICIAL - Explique o tópico em ${idioma} e português
-      2. EXEMPLOS_PRATICOS - Dê exemplos claros e contextualizados
-      3. EXERCICIO_MULTIPLA_ESCOLHA - Crie questões de múltipla escolha
-      4. SOLICITAR_IMAGEM - Peça para gerar uma imagem relacionada ao tópico
-      5. DESCRICAO_IMAGEM - Aluno descreve a imagem gerada
-      6. EXERCICIO_AUDIO - Solicite que o aluno grave áudio
-      7. CORRECAO_PRONUNCIA - Analise e corrija a pronúncia
-      8. FORMACAO_FRASES - Peça para formar frases
-      9. CORRECAO_GRAMATICAL - Corrija erros gramaticais
-      10. REVISAO_VOCABULARIO - Revise palavras aprendidas
-      11. AVALIACAO_PROGRESSO - Avalie o progresso na aula
+      🎯 ESTRUTURA DA AULA APRIMORADA (siga esta sequência rigorosamente):
+      1. ABERTURA_AULA - Apresente o tópico e objetivos de forma motivadora
+      2. EXPLICACAO_CONCEITUAL - Explique o conceito principal com exemplos claros
+      3. DEMONSTRACAO_PRATICA - Demonstre o uso prático com situações reais
+      4. EXERCICIO_GUIADO - Exercício passo a passo com o aluno
+      5. QUIZ_INTERATIVO - Questões de múltipla escolha progressivas
+      6. ATIVIDADE_VISUAL - Gere e explore imagem educativa
+      7. PRATICA_ORAL - Exercício de pronúncia com feedback
+      8. PRODUCAO_TEXTUAL - Criação de frases/textos pelo aluno
+      9. CORRECAO_DETALHADA - Correção explicativa e construtiva
+      10. CONSOLIDACAO - Revisão e conexão com conhecimentos anteriores
+      11. AVALIACAO_PROGRESSO - Avaliação do aprendizado e próximos passos
 
       📚 INSTRUÇÕES ESPECÍFICAS POR ETAPA:
 
-      IMPORTANTE: Em cada etapa, DEIXE CLARO para o aluno qual ação ele deve realizar, usando frases diretas como "Agora envie um áudio", "Responda o questionário abaixo", "Descreva a imagem", etc. Nunca deixe dúvidas sobre o que o aluno deve fazer em seguida.
+      ABERTURA_AULA:
+      - Cumprimente o aluno de forma calorosa
+      - Apresente o tópico da aula de forma clara e motivadora
+      - Explique brevemente o que será aprendido
+      - Conecte com aulas anteriores se relevante
+      - Use emojis para tornar mais atrativo
 
-      EXPLICAÇÃO_INICIAL:
-      - Explique primeiro em ${idioma}, depois em português
-      - Use linguagem clara e didática
-      - Conecte com conhecimentos anteriores
+      EXPLICACAO_CONCEITUAL:
+      - Explique o conceito principal de forma didática
+      - Use linguagem apropriada ao nível do aluno
+      - Forneça 2-3 exemplos claros e contextualizados
+      - Destaque pontos importantes com formatação
+      - Termine com: "👉 Agora vamos ver isso na prática!"
 
-      EXERCICIO_MULTIPLA_ESCOLHA:
-      - Crie 3-4 opções com emojis: 🅰️ 🅱️ 🅲️ 🅳️
+      DEMONSTRACAO_PRATICA:
+      - Mostre o uso em situações reais e cotidianas
+      - Use exemplos variados e interessantes
+      - Explique o "porquê" por trás das regras
+      - Termine com: "✍️ Sua vez de praticar!"
+
+      EXERCICIO_GUIADO:
+      - Proponha um exercício simples e claro
+      - Dê instruções específicas sobre o que fazer
+      - Use frases como: "👉 Complete a frase:", "✍️ Escreva uma resposta usando..."
+      - Aguarde a resposta antes de prosseguir
+
+      QUIZ_INTERATIVO:
+      - Crie 3-4 questões de múltipla escolha com alternativas: A) B) C) D)
       - Questões progressivas em dificuldade
-      - Feedback imediato com explicação
+      - Feedback imediato com explicação detalhada
+      - Use: "📝 Escolha a opção correta:"
 
-      SOLICITAR_IMAGEM:
+      ATIVIDADE_VISUAL:
       - Descreva que tipo de imagem será gerada
-      - Explique como ela se relaciona com o tópico
-      - Use o comando: [GERAR_IMAGEM: descrição detalhada]
+      - Use o comando: [GERAR_IMAGEM: descrição detalhada e educativa]
+      - Após gerar, peça: "🖼️ Descreva o que você vê na imagem usando o vocabulário da aula!"
 
-      EXERCICIO_AUDIO:
-      - Peça para o aluno gravar palavras/frases específicas
+      PRATICA_ORAL:
+      - Escolha palavras/frases específicas para pronúncia
       - Use o comando: [SOLICITAR_AUDIO: texto_para_pronunciar]
-      - Dê instruções claras de pronúncia
+      - Dê instruções claras: "🎤 Grave um áudio pronunciando claramente:"
+      - Forneça dicas de pronúncia quando necessário
 
-      FORMACAO_FRASES:
-      - Peça frases usando vocabulário específico
+      PRODUCAO_TEXTUAL:
+      - Peça para criar frases originais usando o conteúdo aprendido
       - Varie os tipos: afirmativas, negativas, interrogativas
-      - Corrija imediatamente com explicação
+      - Use: "✍️ Crie uma frase usando...", "📝 Escreva um diálogo curto..."
+      - Seja específico sobre o que espera
 
-      ✅ CORREÇÃO OBRIGATÓRIA:
-      - TODA resposta deve ser corrigida se houver erro
+      CORRECAO_DETALHADA:
+      - SEMPRE corrija erros de forma construtiva
       - Explique o erro em português e a forma correta em ${idioma}
-      - Reforce com exemplos adicionais
-      - Seja encorajador mesmo ao corrigir
+      - Use emojis positivos mesmo ao corrigir: ✅ ❌ 💡
+      - Forneça exemplos adicionais quando necessário
+      - Termine com encorajamento
 
-      🎯 INTERAÇÃO ATIVA:
-      - Mantenha o aluno sempre engajado
-      - Varie os tipos de exercícios
-      - Use gamificação com pontuação
-      - Celebre acertos com entusiasmo
+      CONSOLIDACAO:
+      - Resuma os pontos principais da aula
+      - Conecte com conhecimentos anteriores
+      - Destaque o progresso do aluno
+      - Use: "🎯 Hoje você aprendeu:", "🔗 Isso se conecta com..."
+
+      AVALIACAO_PROGRESSO:
+      - Avalie o desempenho do aluno na aula
+      - Identifique pontos fortes e áreas para melhoria
+      - Sugira próximos passos
+      - Termine de forma motivadora
+
+      ✅ REGRAS DE CORREÇÃO OBRIGATÓRIAS:
+      - TODA resposta incorreta deve ser corrigida imediatamente
+      - Explique o erro de forma didática, não apenas aponte
+      - Forneça a versão correta com explicação
+      - Use tom encorajador: "Quase lá! O correto seria..."
+      - Reforce com exemplo adicional se necessário
+
+      🎯 INSTRUÇÕES CLARAS OBRIGATÓRIAS:
+      - SEMPRE deixe claro o que o aluno deve fazer em seguida
+      - Use verbos de ação específicos: "Envie", "Escreva", "Escolha", "Grave"
+      - Nunca deixe o aluno sem saber qual é o próximo passo
+      - Use formatação para destacar instruções: **negrito**, emojis
 
       🧠 ADAPTAÇÃO INTELIGENTE:
-      - Se o aluno erra muito, simplifique
-      - Se acerta tudo, aumente a dificuldade
-      - Repita conceitos quando necessário
-      - Conecte com aulas anteriores
+      - Se o aluno erra muito, simplifique e dê mais exemplos
+      - Se acerta tudo, aumente gradualmente a dificuldade
+      - Repita conceitos quando necessário de forma variada
+      - Mantenha o ritmo adequado ao nível do aluno
 
-      IMPORTANTE: Você deve conduzir a aula passo a passo, seguindo a estrutura definida. Nunca pule etapas. Sempre indique qual etapa está executando.
+      📊 GAMIFICAÇÃO E MOTIVAÇÃO:
+      - Use pontuação e feedback positivo
+      - Celebre acertos com entusiasmo: "🎉 Excelente!", "👏 Perfeito!"
+      - Para erros: "💪 Vamos tentar novamente!", "🎯 Quase lá!"
+      - Mantenha o aluno engajado e motivado
+
+      IMPORTANTE: Você deve conduzir a aula passo a passo, seguindo rigorosamente a estrutura definida. Nunca pule etapas. Sempre indique claramente qual etapa está executando e o que o aluno deve fazer.
     `,
     user: (mensagem, aulaAtual, etapaAula) => `
       CONTEXTO DA AULA: ${aulaAtual.topico} - ${aulaAtual.conteudo}
@@ -93,7 +144,7 @@ const promptsModos = {
 
       Resposta do aluno: "${mensagem}"
 
-      Continue a aula seguindo a metodologia estruturada. Conduza a próxima etapa apropriada.
+      Continue a aula seguindo a metodologia estruturada aprimorada. Conduza a próxima etapa apropriada com instruções claras e específicas.
     `
   },
 
@@ -102,15 +153,17 @@ const promptsModos = {
       Você é ${professor}, conversando naturalmente com ${nome} em ${idioma}.
       Nível do aluno: ${nivel}.
 
-      INSTRUÇÕES:
-      - Mantenha uma conversa natural em ${idioma}
-      - Use temas atuais e cotidianos
-      - Corrija erros sutilmente, reformulando a frase correta
-      - Adapte seu vocabulário ao nível do aluno
-      - Seja amigável e encorajador
-      - Faça perguntas para manter a conversa fluindo
+      INSTRUÇÕES APRIMORADAS:
+      - Mantenha uma conversa natural e fluida em ${idioma}
+      - Use temas atuais, interessantes e relevantes para o aluno
+      - Corrija erros de forma sutil, reformulando a frase correta
+      - Adapte seu vocabulário e complexidade ao nível do aluno
+      - Seja amigável, encorajador e paciente
+      - Faça perguntas abertas para manter a conversa fluindo
+      - Introduza novo vocabulário gradualmente
+      - Forneça feedback construtivo quando apropriado
     `,
-    user: (mensagem) => `Continue esta conversa natural: "${mensagem}"`
+    user: (mensagem) => `Continue esta conversa natural de forma engajante: "${mensagem}"`
   },
 
   modo_professor: {
@@ -118,15 +171,17 @@ const promptsModos = {
       Você é ${professor}, um especialista em ${idioma} dando explicações detalhadas para ${nome}.
       Nível: ${nivel}.
 
-      INSTRUÇÕES:
-      - Responda em ${idioma} com explicações claras
-      - Forneça exemplos práticos
-      - Explique regras gramaticais quando relevante
-      - Use analogias para facilitar o entendimento
-      - Seja paciente e detalhado nas explicações
+      INSTRUÇÕES APRIMORADAS:
+      - Responda em ${idioma} com explicações claras e estruturadas
+      - Forneça exemplos práticos e contextualizados
+      - Explique regras gramaticais de forma didática
+      - Use analogias e comparações para facilitar o entendimento
+      - Seja paciente e extremamente detalhado nas explicações
       - Ofereça exercícios práticos quando apropriado
+      - Use formatação para destacar pontos importantes
+      - Termine sempre com uma pergunta para verificar compreensão
     `,
-    user: (mensagem) => `Explique detalhadamente sobre: "${mensagem}"`
+    user: (mensagem) => `Explique de forma detalhada e didática sobre: "${mensagem}"`
   },
 
   modo_vocabulario: {
@@ -134,15 +189,17 @@ const promptsModos = {
       Você é ${professor} ensinando vocabulário em ${idioma} para ${nome}.
       Nível: ${nivel}.
 
-      INSTRUÇÕES:
-      - Apresente 3-5 palavras novas por sessão
-      - Dê exemplos de uso em frases
-      - Crie associações e dicas de memorização
-      - Faça exercícios de repetição espaçada
-      - Use técnicas de gamificação
-      - Responda sempre em ${idioma}
+      INSTRUÇÕES APRIMORADAS:
+      - Apresente 3-5 palavras novas por sessão de forma organizada
+      - Dê exemplos de uso em frases variadas e contextualizadas
+      - Crie associações, dicas de memorização e mnemônicos
+      - Use técnicas de repetição espaçada
+      - Implemente gamificação com desafios e recompensas
+      - Conecte palavras novas com vocabulário já conhecido
+      - Responda sempre em ${idioma} com traduções quando necessário
+      - Termine com exercícios práticos de fixação
     `,
-    user: (mensagem) => `Ensine vocabulário relacionado a: "${mensagem}"`
+    user: (mensagem) => `Ensine vocabulário relacionado a: "${mensagem}" de forma estruturada e memorável`
   }
 };
 
@@ -151,7 +208,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   const nivel = usuarioBanco?.nivel || 'iniciante';
 
   if (modo === 'aula_guiada') {
-    return await processarAulaGuiada(estado, mensagem, usuarioBanco);
+    return await processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco);
   }
 
   const promptConfig = promptsModos[modo];
@@ -173,7 +230,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 400
+      max_tokens: 500
     });
 
     const resposta = completion.choices[0].message.content;
@@ -194,7 +251,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   }
 }
 
-async function processarAulaGuiada(estado, mensagem, usuarioBanco) {
+async function processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco) {
   const { idioma, professor, nome } = estado;
   const nivel = usuarioBanco?.nivel || 'iniciante';
 
@@ -203,10 +260,10 @@ async function processarAulaGuiada(estado, mensagem, usuarioBanco) {
   const aulaAtual = obterAulaPorId(idioma, aulaAtualId) || obterProximaAula(idioma, 0);
 
   // Determina a etapa da aula baseada no progresso
-  const etapaAula = determinarEtapaAula(mensagem, estado.etapaAulaAtual || 'EXPLICACAO_INICIAL');
+  const etapaAula = determinarEtapaAulaAprimorada(mensagem, estado.etapaAulaAtual || 'ABERTURA_AULA');
 
   // Gera histórico das últimas 3 aulas para contexto
-  const historicoAulas = gerarHistoricoAulas(idioma, aulaAtualId);
+  const historicoAulas = gerarHistoricoAulasDetalhado(idioma, aulaAtualId);
 
   try {
     const completion = await openai.chat.completions.create({
@@ -222,23 +279,23 @@ async function processarAulaGuiada(estado, mensagem, usuarioBanco) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 600
+      max_tokens: 700
     });
 
     let resposta = completion.choices[0].message.content;
 
     // Processa comandos especiais na resposta
-    const resultado = await processarComandosEspeciais(resposta, idioma, aulaAtual);
+    const resultado = await processarComandosEspeciaisAprimorados(resposta, idioma, aulaAtual);
 
     // Atualiza a etapa da aula no estado
-    estado.etapaAulaAtual = proximaEtapaAula(etapaAula);
+    estado.etapaAulaAtual = proximaEtapaAulaAprimorada(etapaAula);
 
-    // Salva progresso da aula
+    // Salva progresso da aula com mais detalhes
     await salvarProgressoLicao(usuarioBanco.id, `aula_${aulaAtual.id}`, 'aula_guiada', {
       questoesRespondidas: 1,
-      questoesCorretas: 1,
+      questoesCorretas: resultado.respostaCorreta ? 1 : 0,
       tempoGasto: 3,
-      completada: false
+      completada: etapaAula === 'AVALIACAO_PROGRESSO'
     });
 
     // Extrai vocabulário da resposta
@@ -249,34 +306,38 @@ async function processarAulaGuiada(estado, mensagem, usuarioBanco) {
       aulaAtual: aulaAtual,
       imagemGerada: resultado.imagemGerada,
       audioSolicitado: resultado.audioSolicitado,
-      incluirTraducao: true,
+      etapaAtual: etapaAula,
+      proximaEtapa: estado.etapaAulaAtual,
+      incluirTraducao: nivel === 'iniciante' || nivel === 'básico',
       incluirAudio: true
     };
 
   } catch (error) {
-    console.error('Erro ao processar aula guiada:', error);
+    console.error('Erro ao processar aula guiada aprimorada:', error);
     throw error;
   }
 }
 
-function determinarEtapaAula(mensagem, etapaAtual) {
+function determinarEtapaAulaAprimorada(mensagem, etapaAtual) {
   const etapas = [
-    'EXPLICACAO_INICIAL',
-    'EXEMPLOS_PRATICOS',
-    'EXERCICIO_MULTIPLA_ESCOLHA',
-    'SOLICITAR_IMAGEM',
-    'DESCRICAO_IMAGEM',
-    'EXERCICIO_AUDIO',
-    'CORRECAO_PRONUNCIA',
-    'FORMACAO_FRASES',
-    'CORRECAO_GRAMATICAL',
-    'REVISAO_VOCABULARIO',
+    'ABERTURA_AULA',
+    'EXPLICACAO_CONCEITUAL',
+    'DEMONSTRACAO_PRATICA',
+    'EXERCICIO_GUIADO',
+    'QUIZ_INTERATIVO',
+    'ATIVIDADE_VISUAL',
+    'PRATICA_ORAL',
+    'PRODUCAO_TEXTUAL',
+    'CORRECAO_DETALHADA',
+    'CONSOLIDACAO',
     'AVALIACAO_PROGRESSO'
   ];
 
-  // Se é a primeira mensagem da aula, começa pela explicação
-  if (!mensagem || mensagem.toLowerCase().includes('começar') || mensagem.toLowerCase().includes('iniciar')) {
-    return 'EXPLICACAO_INICIAL';
+  // Se é a primeira mensagem da aula, começa pela abertura
+  if (!mensagem || mensagem.toLowerCase().includes('começar') ||
+      mensagem.toLowerCase().includes('iniciar') ||
+      mensagem.toLowerCase().includes('start')) {
+    return 'ABERTURA_AULA';
   }
 
   // Avança para a próxima etapa baseada na atual
@@ -288,18 +349,18 @@ function determinarEtapaAula(mensagem, etapaAtual) {
   return etapaAtual;
 }
 
-function proximaEtapaAula(etapaAtual) {
+function proximaEtapaAulaAprimorada(etapaAtual) {
   const etapas = [
-    'EXPLICACAO_INICIAL',
-    'EXEMPLOS_PRATICOS',
-    'EXERCICIO_MULTIPLA_ESCOLHA',
-    'SOLICITAR_IMAGEM',
-    'DESCRICAO_IMAGEM',
-    'EXERCICIO_AUDIO',
-    'CORRECAO_PRONUNCIA',
-    'FORMACAO_FRASES',
-    'CORRECAO_GRAMATICAL',
-    'REVISAO_VOCABULARIO',
+    'ABERTURA_AULA',
+    'EXPLICACAO_CONCEITUAL',
+    'DEMONSTRACAO_PRATICA',
+    'EXERCICIO_GUIADO',
+    'QUIZ_INTERATIVO',
+    'ATIVIDADE_VISUAL',
+    'PRATICA_ORAL',
+    'PRODUCAO_TEXTUAL',
+    'CORRECAO_DETALHADA',
+    'CONSOLIDACAO',
     'AVALIACAO_PROGRESSO'
   ];
 
@@ -311,10 +372,11 @@ function proximaEtapaAula(etapaAtual) {
   return 'AVALIACAO_PROGRESSO'; // Última etapa
 }
 
-async function processarComandosEspeciais(resposta, idioma, aulaAtual) {
+async function processarComandosEspeciaisAprimorados(resposta, idioma, aulaAtual) {
   let respostaProcessada = resposta;
   let imagemGerada = null;
   let audioSolicitado = null;
+  let respostaCorreta = true; // Assume correto por padrão
 
   // Processa comando de geração de imagem
   const regexImagem = /\[GERAR_IMAGEM:\s*([^\]]+)\]/g;
@@ -323,14 +385,14 @@ async function processarComandosEspeciais(resposta, idioma, aulaAtual) {
   if (matchImagem) {
     const descricaoImagem = matchImagem[1];
     try {
-      imagemGerada = await gerarImagemEducativa(descricaoImagem, idioma, aulaAtual);
+      imagemGerada = await gerarImagemEducativaAprimorada(descricaoImagem, idioma, aulaAtual);
       respostaProcessada = resposta.replace(matchImagem[0],
-        `\n🖼️ **Imagem gerada!** Observe a imagem que acabei de criar para você.\n\n📝 **Sua tarefa:** Descreva o que você vê na imagem usando o vocabulário que acabamos de aprender!`
+        `\n🖼️ **Imagem Educativa Gerada!**\n\n📸 Observe atentamente a imagem que criei para ilustrar nosso tópico de hoje.\n\n👉 **Sua tarefa agora:** Descreva detalhadamente o que você vê na imagem, usando o vocabulário e estruturas que acabamos de aprender!\n\n💡 **Dica:** Tente usar pelo menos 3-4 frases completas em sua descrição.`
       );
     } catch (error) {
       console.error('Erro ao gerar imagem:', error);
       respostaProcessada = resposta.replace(matchImagem[0],
-        '🖼️ Desculpe, não foi possível gerar a imagem no momento. Vamos continuar com a aula!'
+        '🖼️ **Ops!** Não foi possível gerar a imagem no momento, mas vamos continuar nossa aula de forma dinâmica!'
       );
     }
   }
@@ -342,40 +404,56 @@ async function processarComandosEspeciais(resposta, idioma, aulaAtual) {
   if (matchAudio) {
     audioSolicitado = matchAudio[1];
     respostaProcessada = resposta.replace(matchAudio[0],
-      `\n🎤 **Exercício de Pronúncia!**\n\n📢 Grave um áudio pronunciando: "${matchAudio[1]}"\n\n💡 **Dica:** Fale claramente e com calma. Vou analisar sua pronúncia e te dar feedback!`
+      `\n🎤 **Exercício de Pronúncia Personalizado!**\n\n📢 **Grave um áudio pronunciando claramente:**\n"${matchAudio[1]}"\n\n💡 **Dicas importantes:**\n• Fale devagar e com clareza\n• Pronuncie cada palavra distintamente\n• Mantenha um tom natural\n\n🎯 Vou analisar sua pronúncia e dar feedback detalhado!`
     );
   }
 
   return {
     resposta: respostaProcessada,
     imagemGerada,
-    audioSolicitado
+    audioSolicitado,
+    respostaCorreta
   };
 }
 
-async function gerarImagemEducativa(descricao, idioma, aulaAtual) {
+async function gerarImagemEducativaAprimorada(descricao, idioma, aulaAtual) {
   try {
-    const promptImagem = `Educational illustration for ${idioma} language learning. Topic: ${aulaAtual.topico}.
-    Create a realistic, modern, and visually appealing image showing: ${descricao}.
-    Style: professional, mature, suitable for adults and teenagers, with a sober and elegant look.
-    No text in the image, focus on visual elements that help language comprehension.`;
+    const promptImagem = `Create a high-quality educational illustration for ${idioma} language learning.
+
+    Topic: ${aulaAtual.topico}
+    Content: ${aulaAtual.conteudo}
+
+    Visual description: ${descricao}
+
+    Style requirements:
+    - Professional, modern, and visually appealing
+    - Suitable for adult learners (ages 16-60)
+    - Clean, elegant design with good contrast
+    - Educational and informative visual elements
+    - No text overlays in the image
+    - Realistic style with clear, identifiable objects/scenes
+    - Bright, engaging colors that aid learning
+    - Focus on visual elements that support language comprehension
+
+    The image should clearly illustrate the concept being taught and be easily describable by language learners.`;
 
     const response = await openai.images.generate({
       model: "dall-e-3",
       prompt: promptImagem,
       n: 1,
       size: "1024x1024",
-      quality: "standard",
+      quality: "hd",
       style: "vivid"
     });
 
     return {
       url: response.data[0].url,
       descricao: descricao,
-      topico: aulaAtual.topico
+      topico: aulaAtual.topico,
+      conteudo: aulaAtual.conteudo
     };
   } catch (error) {
-    console.error('Erro ao gerar imagem educativa:', error);
+    console.error('Erro ao gerar imagem educativa aprimorada:', error);
     throw error;
   }
 }
@@ -391,13 +469,13 @@ export async function analisarAudioPronuncia(audioBuffer, textoEsperado, idioma)
     });
 
     // Analisa a pronúncia comparando com o texto esperado
-    const analise = await analisarPronunciaComIA(transcricao, textoEsperado, idioma);
+    const analise = await analisarPronunciaComIAAprimorada(transcricao, textoEsperado, idioma);
 
     return {
       transcricao: transcricao,
       textoEsperado: textoEsperado,
       analise: analise,
-      pontuacao: calcularPontuacaoPronuncia(transcricao, textoEsperado)
+      pontuacao: calcularPontuacaoPronunciaAprimorada(transcricao, textoEsperado)
     };
   } catch (error) {
     console.error('Erro ao analisar áudio:', error);
@@ -405,57 +483,102 @@ export async function analisarAudioPronuncia(audioBuffer, textoEsperado, idioma)
   }
 }
 
-async function analisarPronunciaComIA(transcricao, textoEsperado, idioma) {
+async function analisarPronunciaComIAAprimorada(transcricao, textoEsperado, idioma) {
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
           role: 'system',
-          content: `Você é um especialista em pronúncia de ${idioma}. Analise a pronúncia do aluno comparando o que ele disse com o que deveria ter dito.
+          content: `Você é um especialista em fonética e pronúncia de ${idioma}. Analise detalhadamente a pronúncia do aluno.
 
-          INSTRUÇÕES:
-          - Compare a transcrição com o texto esperado
-          - Identifique erros de pronúncia específicos
-          - Dê feedback construtivo e encorajador
-          - Sugira melhorias específicas
+          INSTRUÇÕES PARA ANÁLISE:
+          - Compare a transcrição com o texto esperado palavra por palavra
+          - Identifique erros específicos de pronúncia, entonação e ritmo
+          - Dê feedback construtivo, específico e encorajador
+          - Sugira técnicas práticas de melhoria
+          - Use uma escala de 0-100 para avaliar a pronúncia
+          - Destaque pontos positivos antes de mencionar melhorias
           - Use emojis para tornar o feedback mais amigável
-          - Responda em português`
+          - Responda em português de forma didática
+
+          FORMATO DA RESPOSTA:
+          🎯 Pontuação: [0-100]
+
+          ✅ Pontos positivos: [o que o aluno fez bem]
+
+          🔧 Áreas para melhoria: [erros específicos e como corrigir]
+
+          💡 Dicas práticas: [técnicas específicas de pronúncia]
+
+          🎵 Exercício recomendado: [prática específica para melhorar]`
         },
         {
           role: 'user',
-          content: `Texto esperado: "${textoEsperado}"
+          content: `Idioma: ${idioma}
+          Texto esperado: "${textoEsperado}"
           O que o aluno disse: "${transcricao}"
 
-          Analise a pronúncia e dê feedback detalhado.`
+          Analise a pronúncia e forneça feedback detalhado e construtivo.`
         }
       ],
       temperature: 0.7,
-      max_tokens: 300
+      max_tokens: 400
     });
 
     return completion.choices[0].message.content;
   } catch (error) {
-    console.error('Erro ao analisar pronúncia com IA:', error);
-    return 'Não foi possível analisar a pronúncia no momento.';
+    console.error('Erro ao analisar pronúncia com IA aprimorada:', error);
+    return 'Não foi possível analisar a pronúncia no momento. Tente novamente!';
   }
 }
 
-function calcularPontuacaoPronuncia(transcricao, textoEsperado) {
-  // Algoritmo simples de similaridade
-  const palavrasEsperadas = textoEsperado.toLowerCase().split(' ');
-  const palavrasTranscritas = transcricao.toLowerCase().split(' ');
+function calcularPontuacaoPronunciaAprimorada(transcricao, textoEsperado) {
+  // Algoritmo aprimorado de similaridade
+  const palavrasEsperadas = textoEsperado.toLowerCase().trim().split(/\s+/);
+  const palavrasTranscritas = transcricao.toLowerCase().trim().split(/\s+/);
 
-  let acertos = 0;
-  const totalPalavras = Math.max(palavrasEsperadas.length, palavrasTranscritas.length);
+  let pontuacaoTotal = 0;
+  const totalPalavras = palavrasEsperadas.length;
 
-  for (let i = 0; i < Math.min(palavrasEsperadas.length, palavrasTranscritas.length); i++) {
-    if (palavrasEsperadas[i] === palavrasTranscritas[i]) {
-      acertos++;
+  for (let i = 0; i < totalPalavras; i++) {
+    const palavraEsperada = palavrasEsperadas[i];
+    const palavraTranscrita = palavrasTranscritas[i] || '';
+
+    if (palavraEsperada === palavraTranscrita) {
+      pontuacaoTotal += 100; // Palavra perfeita
+    } else if (palavraTranscrita.includes(palavraEsperada) || palavraEsperada.includes(palavraTranscrita)) {
+      pontuacaoTotal += 70; // Palavra similar
+    } else {
+      // Calcula similaridade por caracteres
+      const similaridade = calcularSimilaridadeCaracteres(palavraEsperada, palavraTranscrita);
+      pontuacaoTotal += similaridade;
     }
   }
 
-  return Math.round((acertos / totalPalavras) * 100);
+  // Penaliza se há palavras extras ou faltando
+  const diferencaTamanho = Math.abs(palavrasEsperadas.length - palavrasTranscritas.length);
+  const penalidade = diferencaTamanho * 10;
+
+  const pontuacaoFinal = Math.max(0, Math.round((pontuacaoTotal / totalPalavras) - penalidade));
+  return Math.min(100, pontuacaoFinal);
+}
+
+function calcularSimilaridadeCaracteres(str1, str2) {
+  const len1 = str1.length;
+  const len2 = str2.length;
+
+  if (len1 === 0) return len2 === 0 ? 100 : 0;
+  if (len2 === 0) return 0;
+
+  let matches = 0;
+  const maxLen = Math.max(len1, len2);
+
+  for (let i = 0; i < Math.min(len1, len2); i++) {
+    if (str1[i] === str2[i]) matches++;
+  }
+
+  return Math.round((matches / maxLen) * 100);
 }
 
 function obterCodigoIdioma(idioma) {
@@ -468,13 +591,13 @@ function obterCodigoIdioma(idioma) {
   return codigos[idioma] || 'en';
 }
 
-function gerarHistoricoAulas(idioma, aulaAtualId) {
-  let historico = "Aulas já cobertas:\n";
+function gerarHistoricoAulasDetalhado(idioma, aulaAtualId) {
+  let historico = "📚 Contexto das aulas anteriores:\n";
 
   for (let i = Math.max(1, aulaAtualId - 3); i < aulaAtualId; i++) {
     const aula = obterAulaPorId(idioma, i);
     if (aula) {
-      historico += `- Aula ${aula.id}: ${aula.topico} (${aula.conteudo})\n`;
+      historico += `✅ Aula ${aula.id}: ${aula.topico}\n   Conteúdo: ${aula.conteudo}\n   Nível: ${aula.nivel}\n\n`;
     }
   }
 
@@ -488,9 +611,15 @@ async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
       messages: [
         {
           role: 'system',
-          content: `Extraia as palavras mais importantes desta resposta em ${idioma} e forneça suas traduções em português.
+          content: `Extraia as 3-5 palavras mais importantes e úteis desta resposta em ${idioma} e forneça suas traduções precisas em português.
+
+                   Critérios para seleção:
+                   - Palavras novas ou importantes para o aprendizado
+                   - Vocabulário relevante para o nível do aluno
+                   - Termos que aparecem no contexto da aula
+
                    Formato: palavra1:tradução1|palavra2:tradução2|palavra3:tradução3
-                   Máximo 5 palavras.`
+                   Máximo 5 palavras, mínimo 3.`
         },
         {
           role: 'user',
@@ -506,7 +635,7 @@ async function extrairEAdicionarVocabulario(resposta, usuarioId, idioma) {
 
     for (const par of pares) {
       const [palavra, traducao] = par.split(':');
-      if (palavra && traducao) {
+      if (palavra && traducao && palavra.trim().length > 1) {
         await adicionarVocabulario(usuarioId, palavra.trim(), traducao.trim(), idioma);
       }
     }
@@ -522,8 +651,13 @@ export async function gerarTraducao(texto, idiomaOrigem) {
       messages: [
         {
           role: 'system',
-          content: `Traduza o seguinte texto de ${idiomaOrigem} para português brasileiro.
-                   Forneça apenas a tradução, sem explicações adicionais.`
+          content: `Traduza o seguinte texto de ${idiomaOrigem} para português brasileiro de forma natural e contextual.
+
+                   Instruções:
+                   - Mantenha o tom e estilo do texto original
+                   - Use linguagem natural e fluente
+                   - Preserve formatação e emojis quando relevantes
+                   - Forneça apenas a tradução, sem explicações adicionais`
         },
         {
           role: 'user',
@@ -531,7 +665,7 @@ export async function gerarTraducao(texto, idiomaOrigem) {
         }
       ],
       temperature: 0.3,
-      max_tokens: 200
+      max_tokens: 300
     });
 
     return completion.choices[0].message.content;
@@ -547,14 +681,22 @@ export async function iniciarRevisaoVocabulario(usuarioId, idioma) {
   if (palavras.length === 0) {
     return {
       tipo: 'sem_revisao',
-      mensagem: 'Parabéns! Você não tem palavras para revisar no momento. Continue estudando para adicionar mais vocabulário!'
+      mensagem: '🎉 Parabéns! Você não tem palavras para revisar no momento.\n\n💡 Continue estudando para adicionar mais vocabulário ao seu repertório!'
     };
   }
+
+  let mensagemRevisao = `📖 **Revisão de Vocabulário**\n\nVamos revisar ${palavras.length} palavras importantes:\n\n`;
+
+  palavras.forEach((palavra, index) => {
+    mensagemRevisao += `${index + 1}. **${palavra.palavra}** - ${palavra.traducao}\n`;
+  });
+
+  mensagemRevisao += `\n💪 **Desafio:** Crie uma frase usando pelo menos 2 dessas palavras!`;
 
   return {
     tipo: 'revisao',
     palavras: palavras,
-    mensagem: `Vamos revisar ${palavras.length} palavras do seu vocabulário!`
+    mensagem: mensagemRevisao
   };
 }
 
@@ -565,11 +707,13 @@ export class SessaoAulaGuiada {
     this.questoesRespondidas = 0;
     this.questoesCorretas = 0;
     this.inicioSessao = new Date();
-    this.maxQuestoes = 25; // Aumentado para acomodar mais interações
-    this.maxTempo = 45; // Aumentado para 45 minutos
+    this.maxQuestoes = 30; // Aumentado para acomodar mais interações
+    this.maxTempo = 50; // Aumentado para 50 minutos
     this.etapasCompletadas = [];
     this.imagensGeradas = [];
     this.audiosAnalisados = [];
+    this.errosCorrigidos = [];
+    this.vocabularioAprendido = [];
   }
 
   incrementarQuestao(correta = false) {
@@ -584,36 +728,68 @@ export class SessaoAulaGuiada {
   }
 
   adicionarImagemGerada(imagem) {
-    this.imagensGeradas.push(imagem);
+    this.imagensGeradas.push({
+      ...imagem,
+      timestamp: new Date()
+    });
   }
 
   adicionarAudioAnalisado(analise) {
-    this.audiosAnalisados.push(analise);
+    this.audiosAnalisados.push({
+      ...analise,
+      timestamp: new Date()
+    });
+  }
+
+  adicionarErroCorrigido(erro) {
+    this.errosCorrigidos.push({
+      erro: erro,
+      timestamp: new Date()
+    });
+  }
+
+  adicionarVocabularioAprendido(palavras) {
+    this.vocabularioAprendido.push(...palavras);
   }
 
   verificarLimites() {
     const tempoDecorrido = (new Date() - this.inicioSessao) / (1000 * 60);
-    const etapasObrigatorias = ['EXPLICACAO_INICIAL', 'EXERCICIO_MULTIPLA_ESCOLHA', 'FORMACAO_FRASES'];
+    const etapasObrigatorias = [
+      'ABERTURA_AULA',
+      'EXPLICACAO_CONCEITUAL',
+      'EXERCICIO_GUIADO',
+      'QUIZ_INTERATIVO',
+      'PRODUCAO_TEXTUAL'
+    ];
     const etapasObrigatoriasCompletas = etapasObrigatorias.every(etapa =>
       this.etapasCompletadas.includes(etapa)
     );
 
     return {
       atingiuLimite: (this.questoesRespondidas >= this.maxQuestoes || tempoDecorrido >= this.maxTempo) && etapasObrigatoriasCompletas,
-      questoesRestantes: this.maxQuestoes - this.questoesRespondidas,
+      questoesRestantes: Math.max(0, this.maxQuestoes - this.questoesRespondidas),
       tempoRestante: Math.max(0, this.maxTempo - Math.floor(tempoDecorrido)),
       etapasCompletadas: this.etapasCompletadas.length,
-      etapasObrigatoriasCompletas
+      etapasObrigatoriasCompletas,
+      progressoDetalhado: {
+        imagensGeradas: this.imagensGeradas.length,
+        audiosAnalisados: this.audiosAnalisados.length,
+        errosCorrigidos: this.errosCorrigidos.length,
+        vocabularioAprendido: this.vocabularioAprendido.length
+      }
     };
   }
 
   async finalizarSessao() {
     const duracaoMinutos = Math.floor((new Date() - this.inicioSessao) / (1000 * 60));
-    const pontosBase = this.questoesCorretas * 10;
-    const bonusEtapas = this.etapasCompletadas.length * 5;
-    const bonusImagens = this.imagensGeradas.length * 10;
-    const bonusAudios = this.audiosAnalisados.length * 15;
-    const pontosGanhos = pontosBase + bonusEtapas + bonusImagens + bonusAudios;
+    const pontosBase = this.questoesCorretas * 12;
+    const bonusEtapas = this.etapasCompletadas.length * 8;
+    const bonusImagens = this.imagensGeradas.length * 15;
+    const bonusAudios = this.audiosAnalisados.length * 20;
+    const bonusCorrecoes = this.errosCorrigidos.length * 5;
+    const bonusVocabulario = this.vocabularioAprendido.length * 3;
+
+    const pontosGanhos = pontosBase + bonusEtapas + bonusImagens + bonusAudios + bonusCorrecoes + bonusVocabulario;
 
     await registrarSessaoEstudo(this.usuarioId, 'aula_guiada', {
       duracaoMinutos,
@@ -627,15 +803,19 @@ export class SessaoAulaGuiada {
       questoesCorretas: this.questoesCorretas,
       duracaoMinutos,
       pontosGanhos,
-      aproveitamento: Math.round((this.questoesCorretas / this.questoesRespondidas) * 100),
+      aproveitamento: this.questoesRespondidas > 0 ? Math.round((this.questoesCorretas / this.questoesRespondidas) * 100) : 0,
       etapasCompletadas: this.etapasCompletadas.length,
       imagensGeradas: this.imagensGeradas.length,
       audiosAnalisados: this.audiosAnalisados.length,
+      errosCorrigidos: this.errosCorrigidos.length,
+      vocabularioAprendido: this.vocabularioAprendido.length,
       bonusDetalhado: {
         pontosBase,
         bonusEtapas,
         bonusImagens,
-        bonusAudios
+        bonusAudios,
+        bonusCorrecoes,
+        bonusVocabulario
       }
     };
   }

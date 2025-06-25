@@ -81,53 +81,55 @@ export function processarComandoEspecial(mensagem) {
 }
 
 export async function mostrarMenuPrincipal(client, user, estado) {
-  const menuTexto = `Olá ${estado.nome}! 👋
+  const menuTexto = `👋 **Olá ${estado.nome}!**
 
-Bem-vindo de volta à sua escola de idiomas!
+🎓 **Bem-vindo de volta à ONEDI - sua escola de idiomas com IA!**
 
-O que você gostaria de fazer hoje?`;
+🚀 **O que você gostaria de fazer hoje?**
+
+💡 *Escolha uma das opções abaixo para começar sua jornada de aprendizado:*`;
 
   await client.sendListMessage(user, {
-    buttonText: 'Escolher opção',
+    buttonText: 'Escolher modo de estudo',
     description: menuTexto,
     sections: [
       {
-        title: 'Modos de Estudo',
+        title: '🎯 Modos de Estudo Principais',
         rows: [
           {
             rowId: 'aula_guiada',
             title: '📚 Aula Guiada Interativa',
-            description: 'Aulas passo a passo com explicações, exercícios e desafios.'
+            description: '🤖 Sistema completo: 11 etapas, imagens IA, análise de áudio'
           },
           {
             rowId: 'pratica_livre',
             title: '💬 Prática Livre',
-            description: 'Converse livremente e receba dicas e correções.'
+            description: '🗣️ Conversação natural com correções inteligentes'
           },
           {
             rowId: 'modo_professor',
             title: '👨‍🏫 Modo Professor',
-            description: 'Tire dúvidas e receba explicações detalhadas.'
+            description: '📖 Explicações detalhadas e esclarecimento de dúvidas'
           },
           {
             rowId: 'modo_vocabulario',
-            title: '📖 Modo Vocabulário',
-            description: 'Pratique e memorize novas palavras de forma divertida.'
+            title: '📝 Modo Vocabulário',
+            description: '🧠 Memorização inteligente com repetição espaçada'
           }
         ]
       },
       {
-        title: 'Outras Opções',
+        title: '📊 Acompanhamento',
         rows: [
           {
             rowId: 'ver_progresso',
-            title: '📊 Ver Progresso',
-            description: 'Acompanhe sua evolução detalhada'
+            title: '📈 Ver Progresso Detalhado',
+            description: 'Estatísticas completas do seu aprendizado'
           },
           {
             rowId: 'revisar_vocabulario',
             title: '🔄 Revisar Vocabulário',
-            description: 'Pratique palavras aprendidas'
+            description: 'Pratique palavras que você já aprendeu'
           }
         ]
       }
@@ -139,38 +141,48 @@ export async function mostrarMenuAulaGuiada(client, user, estado) {
   const aulaAtual = obterProximaAula(estado.idioma, (estado.aula_atual || 1) - 1);
   const progressoInfo = calcularProgressoNivel(estado.aula_atual || 1, estado.idioma);
 
-  const menuTexto = `📚 **Aula Guiada Interativa**
+  const menuTexto = `🎓 **Aula Guiada Interativa Aprimorada**
 
-🖼️ Imagens educativas para facilitar o entendimento
-🎤 Pratique sua pronúncia e receba sugestões
-🔊 Ouça o conteúdo para melhorar sua compreensão
-📝 Correção de frases e dicas personalizadas
-🌐 Tradução contextual para ampliar seu vocabulário
+🤖 **Sistema de Ensino com IA Completa**
 
-🎯 **Sua Jornada de Aprendizado:**
-📈 Nível: ${progressoInfo.nivel.charAt(0).toUpperCase() + progressoInfo.nivel.slice(1)} (${Math.round(progressoInfo.progresso)}%)
-📖 Aula atual: ${aulaAtual.id} - ${aulaAtual.topico}
-📝 Conteúdo: ${aulaAtual.conteudo}
-🔥 Sequência: ${estado.streak || 0} dias
-⭐ Pontos: ${estado.pontuacao || 0}
+✨ **Recursos Avançados Disponíveis:**
+🖼️ **Imagens Educativas IA** - Ilustrações personalizadas para cada tópico
+🎤 **Análise de Pronúncia** - Feedback detalhado com pontuação
+🔊 **Áudio HD** - Text-to-speech de alta qualidade
+📝 **Correção Inteligente** - Explicações detalhadas de erros
+🌐 **Tradução Contextual** - Traduções precisas e naturais
+🎯 **Gamificação** - Sistema de pontos e recompensas
 
-🎓 **Como funciona:**
-1️⃣ Explicações em dois idiomas (${estado.idioma} + Português)
-2️⃣ Exercícios de múltipla escolha
-3️⃣ Imagens para ilustrar o conteúdo
-4️⃣ Prática de pronúncia
-5️⃣ Formação de frases com correção
-6️⃣ Feedback motivacional
+📚 **Sua Jornada Atual:**
+🎯 **Nível:** ${progressoInfo.nivel.charAt(0).toUpperCase() + progressoInfo.nivel.slice(1)} (${Math.round(progressoInfo.progresso)}% completo)
+📖 **Aula:** ${aulaAtual.id} - ${aulaAtual.topico}
+📝 **Conteúdo:** ${aulaAtual.conteudo}
+🔥 **Sequência:** ${estado.streak || 0} dias consecutivos
+⭐ **Pontos:** ${estado.pontuacao || 0}
 
-✨ **O que você encontra aqui:**
-• 11 etapas organizadas por aula
-• Avaliação de pronúncia
-• Imagens para cada tópico
-• Correções detalhadas
-• Sistema de pontos e recompensas
+🎪 **Estrutura da Aula (11 Etapas):**
+1️⃣ **Abertura** - Apresentação motivadora do tópico
+2️⃣ **Explicação** - Conceitos fundamentais
+3️⃣ **Demonstração** - Exemplos práticos
+4️⃣ **Exercício Guiado** - Prática assistida
+5️⃣ **Quiz Interativo** - Questões de múltipla escolha
+6️⃣ **Atividade Visual** - Análise de imagens IA
+7️⃣ **Prática Oral** - Exercícios de pronúncia
+8️⃣ **Produção Textual** - Criação de frases
+9️⃣ **Correção Detalhada** - Feedback personalizado
+🔟 **Consolidação** - Revisão e conexões
+1️⃣1️⃣ **Avaliação** - Progresso e próximos passos
 
-🚀 Pronto para uma experiência de aprendizado diferente?
-Envie qualquer mensagem para começar!`;
+🎮 **Características Especiais:**
+• **Instruções Claras** - Sempre sabendo o que fazer
+• **Correções Imediatas** - Aprendizado eficiente
+• **Adaptação Inteligente** - Dificuldade ajustada ao seu nível
+• **Feedback Motivacional** - Encorajamento constante
+
+⏱️ **Duração:** 45-50 minutos de aprendizado intensivo
+🎯 **Objetivo:** Domínio completo do tópico da aula
+
+🚀 **Pronto para uma experiência de aprendizado revolucionária?**`;
 
   await client.sendText(user, menuTexto);
 }
@@ -181,33 +193,48 @@ export async function mostrarProgresso(client, user, usuarioBanco) {
   const aulaAtualInfo = obterProximaAula(idioma, (aula_atual || 1) - 1);
   const progressoInfo = calcularProgressoNivel(aula_atual || 1, idioma);
 
-  const progressoTexto = `
-📊 **Progresso Detalhado de ${nome}**
+  const progressoTexto = `📊 **Relatório Completo de Progresso**
 
-🤖 *ONEDI - Estatísticas Avançadas*
+👤 **Aluno:** ${nome}
+🤖 **Sistema:** ONEDI - IA Educacional
 
-🎯 **Nível Atual:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
-📈 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
+🎯 **Status Atual:**
+📈 **Nível:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+📊 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
 ⭐ **Pontuação Total:** ${pontuacao} pontos
-🔥 **Sequência:** ${streak_dias} dias consecutivos
+🔥 **Sequência Ativa:** ${streak_dias} dias consecutivos
 
-📚 **Aula Atual:** ${aula_atual || 1}
+📚 **Aula em Andamento:**
+🆔 **Número:** ${aula_atual || 1}
 📖 **Tópico:** ${aulaAtualInfo.topico}
 📝 **Conteúdo:** ${aulaAtualInfo.conteudo}
+🎯 **Nível da Aula:** ${aulaAtualInfo.nivel}
 
 🤖 **Recursos IA Utilizados:**
-🖼️ Imagens educativas geradas
-🎤 Análises de pronúncia realizadas
-🔊 Áudios de alta qualidade
-📝 Correções gramaticais inteligentes
+🖼️ **Imagens Educativas** - Geração personalizada
+🎤 **Análise de Pronúncia** - Feedback em tempo real
+🔊 **Áudio HD** - Text-to-speech avançado
+📝 **Correção Inteligente** - Explicações detalhadas
+🌐 **Tradução Contextual** - Precisão linguística
 
-📅 **Última atividade:** ${new Date(ultima_atividade).toLocaleDateString('pt-BR')}
+📅 **Última Atividade:** ${new Date(ultima_atividade).toLocaleDateString('pt-BR', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+})}
 
-🚀 Continue estudando para avançar para a próxima aula!
+🎯 **Próximos Objetivos:**
+• Completar a aula atual com aproveitamento ≥80%
+• Manter a sequência diária de estudos
+• Avançar para o próximo nível
 
-*Digite /proxima para ir para a próxima aula*
-*Digite /aula para ver detalhes da aula atual*
-  `;
+💡 **Comandos Úteis:**
+• **/proxima** - Avançar para próxima aula
+• **/aula** - Detalhes da aula atual
+• **/vocabulario** - Revisar palavras aprendidas
+
+🚀 **Continue sua jornada de aprendizado!**`;
 
   await client.sendText(user, progressoTexto);
 }
@@ -217,28 +244,46 @@ export async function mostrarInfoAulaAtual(client, user, usuarioBanco) {
   const aulaInfo = obterProximaAula(idioma, (aula_atual || 1) - 1);
   const progressoInfo = calcularProgressoNivel(aula_atual || 1, idioma);
 
-  const infoTexto = `
-📚 **Informações da Aula Atual**
+  const infoTexto = `📚 **Detalhes da Aula Atual**
 
-🤖 *ONEDI - Aula Interativa*
+🤖 **ONEDI - Sistema de Aula Interativa**
 
-🆔 **Aula:** ${aulaInfo.id}
-📖 **Tópico:** ${aulaInfo.topico}
+🆔 **Identificação da Aula:**
+📖 **Número:** ${aulaInfo.id}
+🎯 **Tópico:** ${aulaInfo.topico}
 📝 **Conteúdo:** ${aulaInfo.conteudo}
-🎯 **Nível:** ${aulaInfo.nivel.charAt(0).toUpperCase() + aulaInfo.nivel.slice(1)}
+🎚️ **Nível:** ${aulaInfo.nivel.charAt(0).toUpperCase() + aulaInfo.nivel.slice(1)}
 
 📊 **Seu Progresso:**
-📈 Progresso no nível: ${Math.round(progressoInfo.progresso)}%
+📈 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
+🎯 **Status:** ${progressoInfo.progresso === 100 ? 'Nível Completo! 🎉' : 'Em Progresso 📚'}
 
-🤖 **Recursos IA Disponíveis:**
-🖼️ Imagens educativas personalizadas
-🎤 Análise de pronúncia em tempo real
-🔊 Áudio de alta qualidade
-📝 Correção gramatical inteligente
-🌐 Tradução contextual
+🤖 **Recursos IA Disponíveis Nesta Aula:**
+🖼️ **Geração de Imagens** - Ilustrações educativas personalizadas
+🎤 **Análise de Pronúncia** - Feedback detalhado com pontuação 0-100
+🔊 **Áudio Profissional** - Pronúncia nativa de alta qualidade
+📝 **Correção Inteligente** - Explicações gramaticais detalhadas
+🌐 **Tradução Contextual** - Traduções precisas e naturais
 
-💡 **Dica:** Use o modo "Aula Guiada Interativa" para ter uma experiência completa com todos os recursos de IA desta aula!
-  `;
+🎪 **Estrutura da Aula (11 Etapas):**
+1️⃣ Abertura motivadora
+2️⃣ Explicação conceitual
+3️⃣ Demonstração prática
+4️⃣ Exercício guiado
+5️⃣ Quiz interativo
+6️⃣ Atividade visual
+7️⃣ Prática oral
+8️⃣ Produção textual
+9️⃣ Correção detalhada
+🔟 Consolidação
+1️⃣1️⃣ Avaliação final
+
+⏱️ **Duração Estimada:** 45-50 minutos
+🎯 **Objetivo:** Domínio completo do tópico
+
+💡 **Dica Especial:** Use o modo "Aula Guiada Interativa" para ter acesso a todos os recursos de IA desta aula e uma experiência de aprendizado completa e personalizada!
+
+🚀 **Pronto para começar?** Selecione "Aula Guiada Interativa" no menu principal!`;
 
   await client.sendText(user, infoTexto);
 }
@@ -249,7 +294,21 @@ export async function avancarProximaAula(client, user, usuarioBanco) {
   const proximaAula = obterProximaAula(idioma, proximaAulaId - 1);
 
   if (!proximaAula) {
-    await client.sendText(user, '🎉 Parabéns! Você completou todas as aulas disponíveis! Continue praticando nos outros modos de estudo com IA.');
+    await client.sendText(user, `🎉 **Parabéns! Jornada Completa!**
+
+🏆 Você completou todas as ${(aula_atual || 1) - 1} aulas disponíveis do curso de ${idioma}!
+
+🎓 **Conquistas Desbloqueadas:**
+✅ Domínio completo do currículo estruturado
+✅ Experiência com todos os recursos de IA
+✅ Desenvolvimento de todas as habilidades linguísticas
+
+🚀 **Continue Praticando:**
+💬 **Prática Livre** - Mantenha a fluência
+👨‍🏫 **Modo Professor** - Aprofunde conhecimentos
+📖 **Modo Vocabulário** - Expanda seu repertório
+
+🤖 **Todos os recursos de IA continuam disponíveis para seu aperfeiçoamento!**`);
     return;
   }
 
@@ -261,27 +320,35 @@ export async function avancarProximaAula(client, user, usuarioBanco) {
 
   const progressoInfo = calcularProgressoNivel(proximaAulaId, idioma);
 
-  const mensagem = `
-🎉 **Avançou para a Próxima Aula!**
+  const mensagem = `🎉 **Nova Aula Desbloqueada!**
 
-🤖 *ONEDI - Nova Aula Disponível*
+🤖 **ONEDI - Progressão Automática**
 
-📚 **Nova Aula:** ${proximaAula.id}
+📚 **Sua Nova Aula:**
+🆔 **Número:** ${proximaAula.id}
 📖 **Tópico:** ${proximaAula.topico}
 📝 **Conteúdo:** ${proximaAula.conteudo}
 🎯 **Nível:** ${proximaAula.nivel.charAt(0).toUpperCase() + proximaAula.nivel.slice(1)}
 
 📊 **Progresso Atualizado:**
-📈 Progresso no nível: ${Math.round(progressoInfo.progresso)}%
+📈 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
+🎚️ **Status:** ${progressoInfo.progresso === 100 ? 'Nível Completo! 🎉' : 'Em Progresso 📚'}
 
 🤖 **Recursos IA Preparados:**
-🖼️ Novas imagens educativas
-🎤 Exercícios de pronúncia
-🔊 Áudios personalizados
-📝 Correções inteligentes
+🖼️ **Novas Imagens Educativas** - Ilustrações específicas do tópico
+🎤 **Exercícios de Pronúncia** - Palavras e frases do conteúdo
+🔊 **Áudios Personalizados** - Pronúncia nativa atualizada
+📝 **Correções Inteligentes** - Feedback adaptado ao novo nível
 
-🚀 Pronto para começar? Selecione "Aula Guiada Interativa" no menu!
-  `;
+✨ **Novidades Desta Aula:**
+• Conteúdo progressivo baseado em aulas anteriores
+• Exercícios adaptados ao seu nível atual
+• Vocabulário conectado com conhecimentos prévios
+• Desafios personalizados para seu progresso
+
+🚀 **Pronto para a próxima etapa?**
+
+👉 **Selecione "Aula Guiada Interativa" no menu para começar!**`;
 
   await client.sendText(user, mensagem);
 }
@@ -338,6 +405,7 @@ export function validarModoEstudo(modoInput) {
     '📚 aula guiada continua sistema estruturado com progressao': 'aula_guiada',
     '📚 aula guiada continua continuar: alphabet and basic sounds': 'aula_guiada',
     '📚 aula guiada interativa 🤖 ia completa: imagens, áudio, pronúncia': 'aula_guiada',
+    '📚 aula guiada interativa 🤖 sistema completo: 11 etapas, imagens ia, análise de áudio': 'aula_guiada',
 
     // Prática Livre
     'pratica_livre': 'pratica_livre',
@@ -348,6 +416,7 @@ export function validarModoEstudo(modoInput) {
     '💬 pratica livre conversas abertas com correcao': 'pratica_livre',
     '💬 prática livre conversas abertas com correção': 'pratica_livre',
     '💬 prática livre conversas abertas com correção ia': 'pratica_livre',
+    '💬 prática livre 🗣️ conversação natural com correções inteligentes': 'pratica_livre',
 
     // Modo Professor
     'modo_professor': 'modo_professor',
@@ -357,6 +426,7 @@ export function validarModoEstudo(modoInput) {
     '👨‍🏫 modo professor explicacoes e revisoes detalhadas': 'modo_professor',
     '👨‍🏫 modo professor explicações e revisões detalhadas': 'modo_professor',
     '👨‍🏫 modo professor ia explicações detalhadas com ia': 'modo_professor',
+    '👨‍🏫 modo professor 📖 explicações detalhadas e esclarecimento de dúvidas': 'modo_professor',
 
     // Modo Vocabulário
     'modo_vocabulario': 'modo_vocabulario',
@@ -368,7 +438,8 @@ export function validarModoEstudo(modoInput) {
     '📖 modo vocabulário ia': 'modo_vocabulario',
     '📖 modo vocabulario memorizacao e repeticao espacada': 'modo_vocabulario',
     '📖 modo vocabulário memorização e repetição espaçada': 'modo_vocabulario',
-    '📖 modo vocabulário ia memorização inteligente com ia': 'modo_vocabulario'
+    '📖 modo vocabulário ia memorização inteligente com ia': 'modo_vocabulario',
+    '📝 modo vocabulário 🧠 memorização inteligente com repetição espaçada': 'modo_vocabulario'
   };
 
   const modoNormalizado = normalizarTexto(modoInput.replace(/\n/g, ' ').replace(/ +/g, ' '));
@@ -389,30 +460,30 @@ export function validarModoEstudo(modoInput) {
 }
 
 export function calcularNivel(pontuacao) {
-  if (pontuacao < 100) return 'iniciante';
-  if (pontuacao < 300) return 'básico';
-  if (pontuacao < 600) return 'intermediário';
-  if (pontuacao < 1000) return 'avançado';
+  if (pontuacao < 150) return 'iniciante';
+  if (pontuacao < 400) return 'básico';
+  if (pontuacao < 800) return 'intermediário';
+  if (pontuacao < 1500) return 'avançado';
   return 'fluente';
 }
 
 export async function enviarOpcoesMensagem(client, user, idioma) {
   await client.sendListMessage(user, {
-    buttonText: 'Ferramentas IA',
-    description: 'Escolha uma ferramenta de IA:',
+    buttonText: '🤖 Ferramentas IA',
+    description: '🚀 Escolha uma ferramenta de IA avançada:',
     sections: [
       {
-        title: 'Recursos Inteligentes',
+        title: '🧠 Recursos Inteligentes',
         rows: [
           {
             rowId: 'traduzir_texto',
-            title: '📝 Traduzir com IA',
-            description: 'Tradução contextual inteligente'
+            title: '📝 Tradução IA',
+            description: '🌐 Tradução contextual e precisa'
           },
           {
             rowId: 'enviar_audio',
-            title: '🔊 Áudio IA',
-            description: 'Text-to-Speech de alta qualidade'
+            title: '🔊 Áudio HD IA',
+            description: '🎤 Text-to-Speech de alta qualidade'
           }
         ]
       }

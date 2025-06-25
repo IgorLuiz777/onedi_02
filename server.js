@@ -57,6 +57,37 @@ wppconnect
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
       console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
 
+      // TESTE: Receber áudio e enviar para IA diretamente (fora do fluxo do bot)
+      if (message.type === 'ptt' || message.type === 'audio') {
+        // Só executa para o seu número (ajuste se necessário)
+        if (user === '5511980483504@c.us') {
+          await client.sendText(user, '🔄 Teste: Recebendo seu áudio e enviando para IA...');
+          try {
+            // Salva o áudio como arquivo e envia para OpenAI via biblioteca openai
+            const mediaData = await client.downloadMedia(message);
+            const audio = Buffer.from(mediaData.split(';base64,').pop(), 'base64');
+            // Tenta identificar o tipo do áudio (ogg ou wav)
+            let fileExt = 'wav';
+            if (message.mimetype && message.mimetype.includes('ogg')) fileExt = 'ogg';
+            if (message.mimetype && message.mimetype.includes('mp3')) fileExt = 'mp3';
+            // Envia o buffer corretamente para a OpenAI usando File nativo do Node.js
+            const { OpenAI } = await import('openai');
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+            const { File } = await import('node:buffer');
+            const file = new File([audio], `audio.${fileExt}`, { type: message.mimetype || 'audio/wav' });
+            const transcription = await openai.audio.transcriptions.create({
+              file,
+              model: 'whisper-1',
+              language: 'en',
+            });
+            await client.sendText(user, `📝 Transcrição do áudio (teste): ${transcription.text}`);
+          } catch (err) {
+            await client.sendText(user, '❌ Erro no teste de áudio: ' + err.message);
+          }
+          return; // Não deixa seguir para o fluxo normal
+        }
+      }
+
       // Processa mensagens de áudio do aluno
       if (message.type === 'ptt' || message.type === 'audio') {
         await client.startTyping(user); // Inicia feedback de digitando
@@ -65,69 +96,72 @@ wppconnect
         return;
       }
 
-      // Trata ações de opções rápidas (Traduzir/Áudio)
+      // Trata ações de opções rápidas (Traduzir/Áudio) - APENAS quando há lastResponse
       const textoMsg = message.body ? message.body.trim().toLowerCase() : '';
 
-      // Verifica se é uma ação de tradução
-      if (message.selectedRowId === 'traduzir_texto' ||
+      // Verifica se é uma ação de tradução - APENAS se há lastResponse
+      if ((message.selectedRowId === 'traduzir_texto' ||
           textoMsg === 'traduzir' ||
           textoMsg === '📝 traduzir' ||
-          textoMsg.includes('traduzir')) {
+          textoMsg.includes('traduzir')) && lastResponses[user]) {
 
-        if (lastResponses[user]) {
-          try {
-            await client.startTyping(user);
-            console.log(`🔄 Traduzindo: ${lastResponses[user]}`);
-            const traducao = await gerarTraducao(lastResponses[user], estados[user]?.idioma || 'Inglês');
-            await client.stopTyping(user);
-            await client.sendText(user, `📝 *Tradução:* ${traducao}`);
-          } catch (err) {
-            await client.stopTyping(user);
-            console.error('Erro ao traduzir:', err);
-            await client.sendText(user, 'Erro ao traduzir o texto.');
-          }
-        } else {
-          await client.sendText(user, 'Não há mensagem para traduzir. Envie uma mensagem primeiro!');
+        try {
+          await client.startTyping(user);
+          console.log(`🔄 Traduzindo: ${lastResponses[user]}`);
+          const traducao = await gerarTraducao(lastResponses[user], estados[user]?.idioma || 'Inglês');
+          await client.stopTyping(user);
+          await client.sendText(user, `📝 *Tradução:* ${traducao}`);
+        } catch (err) {
+          await client.stopTyping(user);
+          console.error('Erro ao traduzir:', err);
+          await client.sendText(user, 'Erro ao traduzir o texto.');
         }
         return;
       }
 
-      // Verifica se é uma ação de áudio
-      if (message.selectedRowId === 'enviar_audio' ||
+      // Verifica se é uma ação de áudio - APENAS se há lastResponse
+      if ((message.selectedRowId === 'enviar_audio' ||
           textoMsg === 'áudio' ||
           textoMsg === 'audio' ||
           textoMsg === '🔊 áudio' ||
           textoMsg === '🔊 audio' ||
           textoMsg.includes('áudio') ||
-          textoMsg.includes('audio')) {
+          textoMsg.includes('audio')) && lastResponses[user]) {
 
-        if (lastResponses[user]) {
-          try {
-            await client.startTyping(user);
-            console.log(`🔊 Gerando áudio otimizado: ${lastResponses[user]}`);
-            const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        try {
+          await client.startTyping(user);
+          console.log(`🔊 Gerando áudio otimizado: ${lastResponses[user]}`);
+          const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            // Usa a função otimizada para professor com o gênero do usuário
-            const generoUsuario = estados[user]?.genero || 'feminino';
-            const audioBuffer = await gerarAudioProfessor(
-              lastResponses[user],
-              estados[user]?.idioma || 'Inglês',
-              nomeArquivo,
-              generoUsuario
-            );
+          // Usa a função otimizada para professor com o gênero do usuário
+          const generoUsuario = estados[user]?.genero || 'feminino';
+          const audioBuffer = await gerarAudioProfessor(
+            lastResponses[user],
+            estados[user]?.idioma || 'Inglês',
+            nomeArquivo,
+            generoUsuario
+          );
 
-            const audioBase64 = Buffer.from(audioBuffer).toString('base64');
-            await client.stopTyping(user);
-            await client.sendPttFromBase64(user, audioBase64);
-            console.log(`✅ Áudio enviado com sucesso (${audioBuffer.length} bytes)`);
-          } catch (err) {
-            await client.stopTyping(user);
-            console.error('❌ Erro ao gerar áudio:', err);
-            await client.sendText(user, 'Erro ao gerar o áudio. Tente novamente em alguns segundos.');
-          }
-        } else {
-          await client.sendText(user, 'Não há mensagem para converter em áudio. Envie uma mensagem primeiro!');
+          const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+          await client.stopTyping(user);
+          await client.sendPttFromBase64(user, audioBase64);
+          console.log(`✅ Áudio enviado com sucesso (${audioBuffer.length} bytes)`);
+        } catch (err) {
+          await client.stopTyping(user);
+          console.error('❌ Erro ao gerar áudio:', err);
+          await client.sendText(user, 'Erro ao gerar o áudio. Tente novamente em alguns segundos.');
         }
+        return;
+      }
+
+      // Se chegou até aqui e é uma solicitação de áudio/tradução sem lastResponse, informa o usuário
+      // Só mostra essa mensagem se o usuário já estiver na etapa de estudo (etapa 4)
+      if (
+        (textoMsg.includes('áudio') || textoMsg.includes('audio') || textoMsg.includes('traduzir')) &&
+        !lastResponses[user] &&
+        estados[user]?.etapa === 4
+      ) {
+        await client.sendText(user, 'Não há mensagem para converter em áudio. Envie uma mensagem primeiro!');
         return;
       }
 
@@ -161,6 +195,7 @@ wppconnect
             estados[user].streak = novoStreak;
 
             await mostrarMenuPrincipal(client, user, estados[user]);
+            await client.stopTyping(user);
             return;
           } else {
             estados[user] = { etapa: 0 };
@@ -408,7 +443,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
       const usuarioBanco = await consultarUsuario(user);
 
-      // Se for aula guiada, mostra informações detalhadas
+      // Se for aula guiada, mostra informações detalhadas e inicia
       if (modo === 'aula_guiada') {
         await mostrarMenuAulaGuiada(client, user, estado);
 
@@ -416,7 +451,12 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         sessoesAulaGuiada[user] = new SessaoAulaGuiada(usuarioBanco.id, estado.idioma);
 
         // Reset da etapa da aula
-        estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
+        estado.etapaAulaAtual = 'ABERTURA_AULA';
+
+        // Inicia a aula automaticamente após mostrar o menu
+        setTimeout(async () => {
+          await client.sendText(user, '🚀 **Iniciando sua Aula Guiada Interativa!**\n\n👉 **Envie qualquer mensagem para começar a primeira etapa da aula!**');
+        }, 2000);
       } else {
         // Para outros modos, mensagens simples
         const mensagensModo = {
