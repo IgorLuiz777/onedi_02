@@ -207,6 +207,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   const { modo, idioma, professor, nome } = estado;
   const nivel = usuarioBanco?.nivel || 'iniciante';
 
+  // Otimização: usar thread_id para manter contexto e economizar tokens
   if (modo === 'aula_guiada') {
     return await processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco);
   }
@@ -217,6 +218,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   }
 
   try {
+    // Reduzido: não envia system prompt gigante, só o essencial
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
@@ -230,7 +232,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 500
+      max_tokens: 300
     });
 
     const resposta = completion.choices[0].message.content;
@@ -251,6 +253,7 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   }
 }
 
+// --- OTIMIZAÇÃO AULA GUIADA ---
 async function processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco) {
   const { idioma, professor, nome } = estado;
   const nivel = usuarioBanco?.nivel || 'iniciante';
@@ -262,27 +265,32 @@ async function processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco) {
   // Determina a etapa da aula baseada no progresso
   const etapaAula = determinarEtapaAulaAprimorada(mensagem, estado.etapaAulaAtual || 'ABERTURA_AULA');
 
-  // Gera histórico das últimas 3 aulas para contexto
-  const historicoAulas = gerarHistoricoAulasDetalhado(idioma, aulaAtualId);
+  // --- ECONOMIA DE TOKENS: Envia só o resumo da última etapa e contexto mínimo ---
+  // Salva e reutiliza thread_id para manter a mesma conversa
+  if (!estado.threadIdAulaGuiada) estado.threadIdAulaGuiada = null;
+
+  // Monta prompt reduzido
+  const systemPrompt = `Você é ${professor}, professor de ${idioma}. Aula: ${aulaAtual.topico}. Etapa: ${etapaAula}. Nível: ${nivel}. Responda de forma didática, clara e curta, sem repetir instruções já dadas. Corrija e avance para a próxima etapa se apropriado.`;
+  const userPrompt = `Aluno: ${nome}\nMensagem: ${mensagem}\nEtapa: ${etapaAula}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o',
       messages: [
-        {
-          role: 'system',
-          content: promptsModos.aula_guiada.system(professor, idioma, nome, nivel, aulaAtual, historicoAulas, etapaAula)
-        },
-        {
-          role: 'user',
-          content: promptsModos.aula_guiada.user(mensagem, aulaAtual, etapaAula)
-        }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       temperature: 0.7,
-      max_tokens: 700
+      max_tokens: 300,
+      ...(estado.threadIdAulaGuiada ? { thread_id: estado.threadIdAulaGuiada } : {})
     });
 
     let resposta = completion.choices[0].message.content;
+
+    // Salva o thread_id retornado, se for a primeira vez
+    if (!estado.threadIdAulaGuiada && completion.thread_id) {
+      estado.threadIdAulaGuiada = completion.thread_id;
+    }
 
     // Processa comandos especiais na resposta
     const resultado = await processarComandosEspeciaisAprimorados(resposta, idioma, aulaAtual);
@@ -523,7 +531,7 @@ async function analisarPronunciaComIAAprimorada(transcricao, textoEsperado, idio
         }
       ],
       temperature: 0.7,
-      max_tokens: 400
+      max_tokens: 300
     });
 
     return completion.choices[0].message.content;

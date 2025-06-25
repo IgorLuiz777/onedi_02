@@ -57,38 +57,6 @@ wppconnect
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
       console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
 
-      // TESTE: Receber áudio e enviar para IA diretamente (fora do fluxo do bot)
-      if (message.type === 'ptt' || message.type === 'audio') {
-        // Só executa para o seu número (ajuste se necessário)
-        if (user === '5511980483504@c.us') {
-          await client.sendText(user, '🔄 Teste: Recebendo seu áudio e enviando para IA...');
-          try {
-            // Salva o áudio como arquivo e envia para OpenAI via biblioteca openai
-            const mediaData = await client.downloadMedia(message);
-            const audio = Buffer.from(mediaData.split(';base64,').pop(), 'base64');
-            // Tenta identificar o tipo do áudio (ogg ou wav)
-            let fileExt = 'wav';
-            if (message.mimetype && message.mimetype.includes('ogg')) fileExt = 'ogg';
-            if (message.mimetype && message.mimetype.includes('mp3')) fileExt = 'mp3';
-            // Envia o buffer corretamente para a OpenAI usando File nativo do Node.js
-            const { OpenAI } = await import('openai');
-            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-            const { File } = await import('node:buffer');
-            const file = new File([audio], `audio.${fileExt}`, { type: message.mimetype || 'audio/wav' });
-            const transcription = await openai.audio.transcriptions.create({
-              file,
-              model: 'whisper-1',
-              language: 'en',
-            });
-            await client.sendText(user, `📝 Transcrição do áudio (teste): ${transcription.text}`);
-          } catch (err) {
-            await client.sendText(user, '❌ Erro no teste de áudio: ' + err.message);
-          }
-          return; // Não deixa seguir para o fluxo normal
-        }
-      }
-
-      // Processa mensagens de áudio do aluno
       if (message.type === 'ptt' || message.type === 'audio') {
         await client.startTyping(user); // Inicia feedback de digitando
         await processarAudioDoAluno(client, user, message);
@@ -251,15 +219,24 @@ wppconnect
         console.log('🎤 Processando áudio do aluno...');
         await client.sendText(user, '🔄 Analisando seu áudio... Um momento!');
 
-        // Baixa o áudio
-        const audioBuffer = await client.downloadMedia(message);
+        // Baixa o áudio e converte para buffer
+        const mediaData = await client.downloadMedia(message);
+        const audioBuffer = Buffer.from(mediaData.split(';base64,').pop(), 'base64');
 
-        // Processa o áudio usando Whisper
-        const resultadoTranscricao = await processarAudioAluno(audioBuffer, estados[user]?.idioma || 'Inglês');
+        // Processa o áudio usando a função centralizada
+        const resultadoTranscricao = await processarAudioAluno(
+          audioBuffer,
+          estados[user]?.idioma || 'Inglês',
+          message.mimetype || 'audio/wav'
+        );
 
         // Analisa a pronúncia
         const textoEsperado = aguardandoAudio[user].textoEsperado;
-        const analise = await analisarPronunciaIA(resultadoTranscricao.texto, textoEsperado, estados[user]?.idioma || 'Inglês');
+        const analise = await analisarPronunciaIA(
+          resultadoTranscricao.texto,
+          textoEsperado,
+          estados[user]?.idioma || 'Inglês'
+        );
 
         // Monta resposta detalhada
         const feedback = `
@@ -439,6 +416,10 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         return;
       }
 
+      // Limpa threadIdAulaGuiada ao trocar de modo
+      if (estado.modo !== modo && estado.threadIdAulaGuiada) {
+        delete estado.threadIdAulaGuiada;
+      }
       estado.modo = modo;
 
       const usuarioBanco = await consultarUsuario(user);
@@ -452,6 +433,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
         // Reset da etapa da aula
         estado.etapaAulaAtual = 'ABERTURA_AULA';
+        estado.threadIdAulaGuiada = null; // Garante que começa nova thread
 
         // Inicia a aula automaticamente após mostrar o menu
         setTimeout(async () => {

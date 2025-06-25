@@ -256,8 +256,8 @@ export async function processarAudioAlunoDirecto(client, message, idioma) {
 }
 
 // Função de compatibilidade (mantém a interface antiga)
-export async function processarAudioAluno(audioBuffer, idioma) {
-  console.log(`🔄 Usando processamento de buffer legado: ${audioBuffer.length} bytes`);
+export async function processarAudioAluno(audioBuffer, idioma, mimetype = 'audio/wav') {
+  console.log(`🔄 Usando processamento de buffer direto: ${audioBuffer.length} bytes`);
 
   // Validações básicas
   if (!audioBuffer || audioBuffer.length === 0) {
@@ -268,113 +268,36 @@ export async function processarAudioAluno(audioBuffer, idioma) {
     throw new Error('Arquivo de áudio muito pequeno (possivelmente corrompido)');
   }
 
-  // Cria diretório temporário
-  const tempDir = path.join(__dirname, '..', 'temp', 'audio');
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  const timestamp = Date.now();
-  const randomId = Math.random().toString(36).substr(2, 6);
-
   // Detecta o tipo de áudio
   const tipoDetectado = detectarTipoAudioRobusto(audioBuffer);
-  console.log(`🔍 Tipo detectado: ${tipoDetectado}`);
+  let fileExt = tipoDetectado || 'wav';
+  if (mimetype && mimetype.includes('ogg')) fileExt = 'ogg';
+  if (mimetype && mimetype.includes('mp3')) fileExt = 'mp3';
 
-  // Lista de formatos para tentar
-  const formatosTentativa = [
-    tipoDetectado,
-    'wav',
-    'mp3',
-    'webm',
-    'ogg',
-    'm4a'
-  ].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i);
-
-  let ultimoErro = null;
-
-  // Tenta cada formato
-  for (const formato of formatosTentativa) {
-    const nomeArquivo = `audio_legacy_${timestamp}_${randomId}.${formato}`;
-    const caminhoArquivo = path.join(tempDir, nomeArquivo);
-
-    try {
-      console.log(`🔄 Tentando formato: ${formato}`);
-
-      // Salva o buffer
-      fs.writeFileSync(caminhoArquivo, audioBuffer);
-      console.log(`📁 Arquivo salvo: ${nomeArquivo} (${audioBuffer.length} bytes)`);
-
-      // Verifica arquivo
-      if (!fs.existsSync(caminhoArquivo)) {
-        throw new Error('Falha ao criar arquivo temporário');
-      }
-
-      const stats = fs.statSync(caminhoArquivo);
-      if (stats.size === 0) {
-        throw new Error('Arquivo criado está vazio');
-      }
-
-      // Cria stream para Whisper
-      const audioStream = fs.createReadStream(caminhoArquivo);
-      audioStream.path = nomeArquivo;
-
-      // Parâmetros para Whisper
-      const whisperParams = {
-        file: audioStream,
-        model: 'whisper-1',
-        language: obterCodigoIdioma(idioma),
-        response_format: 'verbose_json',
-        temperature: 0.2,
-        prompt: gerarPromptContextual(idioma)
-      };
-
-      console.log(`🤖 Enviando para Whisper...`);
-
-      // Envia para Whisper
-      const response = await openai.audio.transcriptions.create(whisperParams);
-
-      console.log(`✅ Transcrição bem-sucedida: "${response.text}"`);
-
-      // Remove arquivo temporário
-      try {
-        fs.unlinkSync(caminhoArquivo);
-        console.log(`🗑️ Arquivo temporário removido`);
-      } catch (cleanupError) {
-        console.warn(`⚠️ Erro ao remover arquivo: ${cleanupError.message}`);
-      }
-
-      // Retorna resultado
-      return {
-        texto: response.text || '',
-        confianca: response.segments
-          ? response.segments.reduce((acc, seg) => acc + (seg.avg_logprob || 0), 0) / response.segments.length
-          : 0.8,
-        duracao: response.duration || 0,
-        idioma: response.language || idioma,
-        formato: formato,
-        metodo: 'buffer_legado'
-      };
-
-    } catch (error) {
-      ultimoErro = error;
-      console.log(`❌ Falha com formato ${formato}: ${error.message}`);
-
-      // Remove arquivo em caso de erro
-      try {
-        if (fs.existsSync(caminhoArquivo)) {
-          fs.unlinkSync(caminhoArquivo);
-        }
-      } catch (cleanupError) {
-        console.warn(`⚠️ Erro ao limpar: ${cleanupError.message}`);
-      }
-
-      continue;
-    }
+  try {
+    // Envia o buffer corretamente para a OpenAI usando File nativo do Node.js
+    const { OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { File } = await import('node:buffer');
+    const file = new File([audioBuffer], `audio.${fileExt}`, { type: mimetype || 'audio/wav' });
+    const transcription = await openai.audio.transcriptions.create({
+      file,
+      model: 'whisper-1',
+      language: obterCodigoIdioma(idioma),
+    });
+    console.log(`✅ Transcrição bem-sucedida: "${transcription.text}"`);
+    return {
+      texto: transcription.text || '',
+      confianca: 0.8, // OpenAI não retorna confiança diretamente
+      duracao: 0, // Não disponível nesse endpoint
+      idioma: obterCodigoIdioma(idioma),
+      formato: fileExt,
+      metodo: 'buffer_direto',
+    };
+  } catch (error) {
+    console.error('❌ Erro ao enviar áudio para OpenAI:', error);
+    throw error;
   }
-
-  // Se chegou aqui, todos falharam
-  throw new Error(`Não foi possível processar o áudio. Formatos tentados: ${formatosTentativa.join(', ')}. Último erro: ${ultimoErro?.message || 'Desconhecido'}`);
 }
 
 // Função aprimorada para detectar tipo de áudio
@@ -500,7 +423,7 @@ export async function analisarPronunciaIA(
         },
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      max_tokens: 400,
     });
 
     const resposta = completion.choices[0].message.content;
