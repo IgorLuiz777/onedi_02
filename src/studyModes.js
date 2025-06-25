@@ -217,6 +217,60 @@ export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
     throw new Error(`Modo de estudo inválido: ${modo}`);
   }
 
+  if (modo === 'modo_vocabulario') {
+    if (!estado.threadIdVocabulario) estado.threadIdVocabulario = null;
+
+    const systemPrompt = `Você é ${professor}, especialista em ensino de vocabulário de ${idioma} para ${nome} (nível: ${nivel}).
+
+        INSTRUÇÕES:
+        - Apresente 3 a 5 palavras novas por sessão, cada uma com tradução em português.
+        - Para cada palavra, forneça:
+          • Tradução
+          • Exemplo de uso contextualizado em frase
+          • Dica de memorização ou associação
+        - Após apresentar as palavras, proponha exercícios de repetição espaçada:
+          • Peça para o aluno repetir as palavras
+          • Peça para criar frases usando as palavras
+          • Faça perguntas para revisar o significado
+        - Sempre responda em ${idioma} e forneça tradução quando necessário.
+        - Mantenha o contexto da thread para revisar e reforçar palavras já apresentadas.
+        - Use gamificação: pontos, desafios, elogios.
+        - Nunca repita as mesmas palavras em sessões consecutivas.
+        - No final, proponha um mini-desafio de fixação.
+        `;
+            const userPrompt = `Tema ou contexto desejado: "${mensagem}"
+        Se já houver palavras em revisão, reforce-as antes de apresentar novas.`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+        ...(estado.threadIdVocabulario ? { thread_id: estado.threadIdVocabulario } : {})
+      });
+
+      const resposta = completion.choices[0].message.content;
+      if (!estado.threadIdVocabulario && completion.thread_id) {
+        estado.threadIdVocabulario = completion.thread_id;
+      }
+
+      await extrairEAdicionarVocabulario(resposta, usuarioBanco.id, idioma);
+
+      return {
+        resposta,
+        incluirTraducao: true,
+        incluirAudio: true
+      };
+    } catch (error) {
+      console.error('Erro ao processar modo_vocabulario:', error);
+      throw error;
+    }
+  }
+
   try {
     // Reduzido: não envia system prompt gigante, só o essencial
     const completion = await openai.chat.completions.create({
