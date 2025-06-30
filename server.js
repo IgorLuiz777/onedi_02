@@ -39,11 +39,17 @@ const lastResponses = {};
 const aguardandoAudio = {};
 const contadorMensagens = {};
 
+await puppeteer.launch({
+  args: ['--no-sandbox', '--disable-setuid-sandbox']
+});
+
 wppconnect
   .create({
     session: 'sessionName',
     headless: true,
     multiDevice: true,
+    phoneNumber: '5511915389938',
+    catchLinkCode: (str) => console.log('Code: ' + str),
   })
   .then((client) => {
     console.log('🚀 Conectado ao WhatsApp!');
@@ -74,9 +80,9 @@ wppconnect
 
       // Verifica se é uma ação de tradução - APENAS se há lastResponse
       if ((message.selectedRowId === 'traduzir_texto' ||
-          textoMsg === 'traduzir' ||
-          textoMsg === '📝 traduzir' ||
-          textoMsg.includes('traduzir')) && lastResponses[user]) {
+        textoMsg === 'traduzir' ||
+        textoMsg === '📝 traduzir' ||
+        textoMsg.includes('traduzir')) && lastResponses[user]) {
 
         try {
           await client.startTyping(user);
@@ -94,12 +100,12 @@ wppconnect
 
       // Verifica se é uma ação de áudio - APENAS se há lastResponse
       if ((message.selectedRowId === 'enviar_audio' ||
-          textoMsg === 'áudio' ||
-          textoMsg === 'audio' ||
-          textoMsg === '🔊 áudio' ||
-          textoMsg === '🔊 audio' ||
-          textoMsg.includes('áudio') ||
-          textoMsg.includes('audio')) && lastResponses[user]) {
+        textoMsg === 'áudio' ||
+        textoMsg === 'audio' ||
+        textoMsg === '🔊 áudio' ||
+        textoMsg === '🔊 audio' ||
+        textoMsg.includes('áudio') ||
+        textoMsg.includes('audio')) && lastResponses[user]) {
 
         try {
           await client.startTyping(user);
@@ -250,8 +256,8 @@ wppconnect
 ${analise.analiseCompleta}
 
 ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
-  analise.pontuacao >= 60 ? '👍 Boa pronúncia, continue praticando!' :
-  '💪 Continue praticando, você vai melhorar!'}
+              analise.pontuacao >= 60 ? '👍 Boa pronúncia, continue praticando!' :
+                '💪 Continue praticando, você vai melhorar!'}
           `;
 
           await client.sendText(user, feedback);
