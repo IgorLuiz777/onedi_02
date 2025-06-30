@@ -40,10 +40,6 @@ const lastResponses = {};
 const aguardandoAudio = {};
 const contadorMensagens = {};
 
-await puppeteer.launch({
-  args: ['--no-sandbox', '--disable-setuid-sandbox']
-});
-
 wppconnect
   .create({
     session: 'sessionName',
@@ -51,6 +47,9 @@ wppconnect
     multiDevice: true,
     phoneNumber: '5511915389938',
     catchLinkCode: (str) => console.log('Code: ' + str),
+    puppeteerOptions: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
   })
   .then((client) => {
     console.log('🚀 Conectado ao WhatsApp!');
