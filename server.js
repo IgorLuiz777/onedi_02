@@ -1,5 +1,6 @@
 import wppconnect from '@wppconnect-team/wppconnect';
 import dotenv from 'dotenv';
+import puppeteer from 'puppeteer';
 import {
   consultarUsuario,
   salvarUsuario,
@@ -570,7 +571,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 • Questões respondidas: ${resultadoSessao.questoesRespondidas}
 • Questões corretas: ${resultadoSessao.questoesCorretas}
 • Aproveitamento: ${resultadoSessao.aproveitamento}%
-• Etapas completadas: ${resultadoSessao.etapasCompletas}/11
+• Etapas completadas: ${resultadoSessao.etapasCompletadas}/11
 • Imagens analisadas: ${resultadoSessao.imagensGeradas}
 • Áudios analisados: ${resultadoSessao.audiosAnalisados}
 
