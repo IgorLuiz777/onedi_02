@@ -36,7 +36,8 @@ dotenv.config();
 const estados = {};
 const sessoesAulaGuiada = {};
 const lastResponses = {};
-const aguardandoAudio = {}; // Para controlar quando estamos esperando áudio do aluno
+const aguardandoAudio = {};
+const contadorMensagens = {};
 
 wppconnect
   .create({
@@ -56,6 +57,10 @@ wppconnect
 
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
       console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
+
+      // Incrementa contador de mensagens para lembretes de menu
+      if (!contadorMensagens[user]) contadorMensagens[user] = 0;
+      contadorMensagens[user]++;
 
       if (message.type === 'ptt' || message.type === 'audio') {
         await client.startTyping(user); // Inicia feedback de digitando
@@ -211,35 +216,30 @@ wppconnect
 
     async function processarAudioDoAluno(client, user, message) {
       try {
-        if (!aguardandoAudio[user]) {
-          await client.sendText(user, '🎤 Recebi seu áudio! Mas no momento não estou esperando uma gravação. Use o modo Aula Guiada para exercícios de pronúncia!');
-          return;
-        }
-
         console.log('🎤 Processando áudio do aluno...');
         await client.sendText(user, '🔄 Analisando seu áudio... Um momento!');
 
-        // Baixa o áudio e converte para buffer
         const mediaData = await client.downloadMedia(message);
         const audioBuffer = Buffer.from(mediaData.split(';base64,').pop(), 'base64');
 
-        // Processa o áudio usando a função centralizada
         const resultadoTranscricao = await processarAudioAluno(
           audioBuffer,
           estados[user]?.idioma || 'Inglês',
           message.mimetype || 'audio/wav'
         );
 
-        // Analisa a pronúncia
-        const textoEsperado = aguardandoAudio[user].textoEsperado;
-        const analise = await analisarPronunciaIA(
-          resultadoTranscricao.texto,
-          textoEsperado,
-          estados[user]?.idioma || 'Inglês'
-        );
+        console.log(`📝 Transcrição: "${resultadoTranscricao.texto}"`);
 
-        // Monta resposta detalhada
-        const feedback = `
+        if (aguardandoAudio[user]) {
+          const textoEsperado = aguardandoAudio[user].textoEsperado;
+          const analise = await analisarPronunciaIA(
+            resultadoTranscricao.texto,
+            textoEsperado,
+            estados[user]?.idioma || 'Inglês'
+          );
+
+          // Monta resposta detalhada
+          const feedback = `
 🎤 **Análise da sua Pronúncia**
 
 📝 **Você disse:** "${resultadoTranscricao.texto}"
@@ -252,29 +252,53 @@ ${analise.analiseCompleta}
 ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
   analise.pontuacao >= 60 ? '👍 Boa pronúncia, continue praticando!' :
   '💪 Continue praticando, você vai melhorar!'}
-        `;
+          `;
 
-        await client.sendText(user, feedback);
+          await client.sendText(user, feedback);
 
-        // Adiciona à sessão se estiver em aula guiada
-        if (sessoesAulaGuiada[user]) {
-          sessoesAulaGuiada[user].adicionarAudioAnalisado(analise);
-          sessoesAulaGuiada[user].incrementarQuestao(analise.pontuacao >= 60);
-        }
+          if (sessoesAulaGuiada[user]) {
+            sessoesAulaGuiada[user].adicionarAudioAnalisado(analise);
+            sessoesAulaGuiada[user].incrementarQuestao(analise.pontuacao >= 60);
+          }
 
-        // Limpa o estado de espera de áudio
-        delete aguardandoAudio[user];
+          delete aguardandoAudio[user];
 
-        // Continua a aula se estiver no modo aula guiada
-        if (estados[user]?.modo === 'aula_guiada') {
-          setTimeout(async () => {
-            await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.');
-          }, 2000);
+          if (estados[user]?.modo === 'aula_guiada') {
+            setTimeout(async () => {
+              await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.');
+            }, 2000);
+          }
+        } else {
+          console.log('🎤 Processando áudio como mensagem de texto...');
+
+          const usuarioBanco = await consultarUsuario(user);
+          const resultado = await processarModoEstudo(estados[user], resultadoTranscricao.texto, usuarioBanco);
+
+          lastResponses[user] = resultado.resposta;
+
+          let respostaCompleta = `🎤 **Recebi seu áudio:** "${resultadoTranscricao.texto}"\n\n`;
+          respostaCompleta += resultado.resposta;
+
+          await client.sendText(user, respostaCompleta);
+
+          if (resultado.imagemGerada) {
+            try {
+              await client.sendImage(user, resultado.imagemGerada.url, 'imagem-aula',
+                `🖼️ Imagem da aula: ${resultado.imagemGerada.topico}`);
+            } catch (imgError) {
+              console.error('Erro ao enviar imagem:', imgError);
+              await client.sendText(user, '🖼️ Não foi possível enviar a imagem, mas vamos continuar!');
+            }
+          }
+
+          await enviarOpcoesMensagem(client, user, estados[user].idioma);
+
+          await enviarLembreteRecursos(client, user);
         }
 
       } catch (error) {
         console.error('❌ Erro ao processar áudio do aluno:', error);
-        await client.sendText(user, '❌ Desculpe, não consegui processar seu áudio. Tente gravar novamente!');
+        await client.sendText(user, '❌ Desculpe, não consegui processar seu áudio. Tente gravar novamente ou digite /menu para outras opções!');
         delete aguardandoAudio[user];
       }
     }
@@ -304,6 +328,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
       switch (comando) {
         case 'menu_principal':
+          contadorMensagens[user] = 0;
           await mostrarMenuPrincipal(client, user, estados[user]);
           break;
         case 'ver_progresso':
@@ -440,19 +465,19 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           await client.sendText(user, '🚀 **Iniciando sua Aula Guiada Interativa!**\n\n👉 **Envie qualquer mensagem para começar a primeira etapa da aula!**');
         }, 2000);
       } else {
-        // Para outros modos, mensagens simples
         const mensagensModo = {
-          'pratica_livre': '💬 Modo Prática Livre ativado!\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\nSobre o que você gostaria de conversar?',
+          'pratica_livre': '💬 **Modo Prática Livre ativado!**\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e responder normalmente.\n\n📝 Sobre o que você gostaria de conversar?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
 
-          'modo_professor': '👨‍🏫 Modo Professor ativado!\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\nQual tópico você gostaria que eu explicasse?',
+          'modo_professor': '👨‍🏫 **Modo Professor ativado!**\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\n🎤 **Dica:** Você pode enviar áudios com suas perguntas! Eu vou transcrever e explicar.\n\n📚 Qual tópico você gostaria que eu explicasse?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
 
-          'modo_vocabulario': '📖 Modo Vocabulário ativado!\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\nQue tipo de vocabulário você quer aprender hoje?'
+          'modo_vocabulario': '📖 **Modo Vocabulário ativado!**\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e ensinar vocabulário relacionado.\n\n📝 Que tipo de vocabulário você quer aprender hoje?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*'
         };
 
         await client.sendText(user, mensagensModo[modo] || 'Modo selecionado! Vamos começar?');
       }
 
       estado.etapa = 4;
+      contadorMensagens[user] = 0;
     }
 
     async function processarEstudo(client, user, estado, message, usuarioBanco) {
@@ -503,6 +528,8 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         if (!aguardandoAudio[user]) {
           await enviarOpcoesMensagem(client, user, estado.idioma);
         }
+
+        await enviarLembreteRecursos(client, user);
 
         // Se for aula guiada, salva o progresso da aula atual
         if (estado.modo === 'aula_guiada' && resultado.aulaAtual) {
@@ -583,7 +610,25 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
       } catch (error) {
         console.error('Erro ao processar estudo:', error);
-        await client.sendText(user, 'Desculpe, houve um problema. Vamos tentar novamente!');
+        await client.sendText(user, 'Desculpe, houve um problema. Vamos tentar novamente!\n\n💡 *Digite /menu para voltar às opções principais*');
+      }
+    }
+
+    async function enviarLembreteRecursos(client, user) {
+      // Envia lembrete sobre recursos a cada 8 mensagens
+      if (contadorMensagens[user] && contadorMensagens[user] % 8 === 0) {
+        const lembretes = [
+          '🎤 **Lembrete:** Você pode enviar áudios! Eu transcrevo e respondo normalmente.\n💡 Digite **/menu** para voltar às opções principais.',
+          '🔊 **Dica:** Use os botões de áudio e tradução após minhas respostas!\n💡 Digite **/menu** a qualquer momento para mudar de modo.',
+          '📱 **Recursos disponíveis:** Áudio, tradução, imagens IA e muito mais!\n💡 Digite **/menu** para explorar outros modos de estudo.',
+          '🎯 **Aproveite:** Fale comigo por áudio para praticar sua pronúncia!\n💡 Digite **/menu** para ver seu progresso e outras opções.'
+        ];
+
+        const lembreteAleatorio = lembretes[Math.floor(Math.random() * lembretes.length)];
+
+        setTimeout(async () => {
+          await client.sendText(user, lembreteAleatorio);
+        }, 2000);
       }
     }
 
@@ -592,7 +637,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 🆘 **Central de Ajuda - ONEDI IA**
 
 **Comandos disponíveis:**
-• /menu - Voltar ao menu principal
+• */menu* - Voltar ao menu principal
 • /progresso - Ver seu progresso detalhado
 • /aula - Ver informações da aula atual
 • /proxima - Avançar para a próxima aula
@@ -620,6 +665,14 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 🔊 **Text-to-Speech** - Áudio de alta qualidade
 📝 **Correção Inteligente** - IA corrige e explica erros
 🌐 **Tradução Instantânea** - Tradução contextual
+🎙️ **Speech-to-Text** - Envie áudios em qualquer modo!
+
+**Como usar áudios em todos os modos:**
+🎤 **Em qualquer modo de estudo:**
+1. Grave um áudio com sua mensagem/pergunta
+2. Eu vou transcrever automaticamente
+3. Respondo como se fosse texto normal
+4. Você recebe correções e feedback
 
 **Como usar a Aula Guiada Interativa:**
 1. Selecione "Aula Guiada Contínua"
@@ -636,6 +689,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 • Grave áudios claros para melhor análise
 • Descreva as imagens com detalhes
 • Complete as aulas em sequência
+• **Digite /menu sempre que quiser mudar de atividade**
 
 Precisa de mais ajuda? Entre em contato conosco! 📞
       `;
@@ -660,6 +714,14 @@ setInterval(() => {
     }
   }
 }, 60 * 1000); // Executa a cada minuto
+
+setInterval(() => {
+  for (const user in contadorMensagens) {
+    if (contadorMensagens[user] > 100) {
+      contadorMensagens[user] = 0;
+    }
+  }
+}, 30 * 60 * 1000);
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Erro não tratado:', err);
