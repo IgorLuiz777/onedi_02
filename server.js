@@ -58,7 +58,7 @@ wppconnect
     client.onMessage(async (message) => {
       const user = message.from;
 
-      if (user !== '5511980483504@c.us') return;
+      // if (user !== '5511980483504@c.us') return;
       if (message.isGroupMsg || user.endsWith('@status') || user === 'status@broadcast') return;
 
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
