@@ -15,7 +15,29 @@ CREATE TABLE IF NOT EXISTS usuarios (
   aula_atual INTEGER DEFAULT 1,
   ultima_atividade TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  -- Novos campos para sistema de planos
+  plano_id INTEGER DEFAULT NULL,
+  status_plano VARCHAR(20) DEFAULT 'teste_gratuito', -- teste_gratuito, ativo, expirado, cancelado
+  data_inicio_plano TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  data_fim_plano TIMESTAMP DEFAULT NULL,
+  tempo_teste_usado INTEGER DEFAULT 0, -- em minutos
+  limite_teste_minutos INTEGER DEFAULT 10,
+  idiomas_disponiveis TEXT[] DEFAULT ARRAY[]::TEXT[], -- array de idiomas disponíveis
+  idioma_teste VARCHAR(50) DEFAULT NULL -- idioma usado no teste gratuito
+);
+
+-- Tabela de planos
+CREATE TABLE IF NOT EXISTS planos (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  descricao TEXT,
+  preco DECIMAL(10,2) NOT NULL,
+  quantidade_idiomas INTEGER NOT NULL,
+  duracao_dias INTEGER NOT NULL, -- duração em dias
+  ativo BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabela de progresso por lição
@@ -60,7 +82,7 @@ CREATE TABLE IF NOT EXISTS sessoes_estudo (
   data_sessao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de histórico de aulas (nova)
+-- Tabela de histórico de aulas
 CREATE TABLE IF NOT EXISTS historico_aulas (
   id SERIAL PRIMARY KEY,
   usuario_id INTEGER REFERENCES usuarios(id),
@@ -75,18 +97,108 @@ CREATE TABLE IF NOT EXISTS historico_aulas (
   UNIQUE(usuario_id, aula_id)
 );
 
+-- Tabela de histórico de pagamentos
+CREATE TABLE IF NOT EXISTS historico_pagamentos (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER REFERENCES usuarios(id),
+  plano_id INTEGER REFERENCES planos(id),
+  valor DECIMAL(10,2) NOT NULL,
+  status VARCHAR(20) NOT NULL, -- pendente, aprovado, cancelado, estornado
+  metodo_pagamento VARCHAR(50),
+  transaction_id VARCHAR(200),
+  data_pagamento TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  data_vencimento TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserir planos padrão
+INSERT INTO planos (nome, descricao, preco, quantidade_idiomas, duracao_dias) VALUES
+('Básico', 'Acesso a 1 idioma por 30 dias', 29.90, 1, 30),
+('Intermediário', 'Acesso a 2 idiomas por 30 dias', 49.90, 2, 30),
+('Avançado', 'Acesso a 3 idiomas por 30 dias', 69.90, 3, 30),
+('Premium', 'Acesso a todos os idiomas por 30 dias', 89.90, 999, 30)
+ON CONFLICT DO NOTHING;
+
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_usuarios_telefone ON usuarios(telefone);
+CREATE INDEX IF NOT EXISTS idx_usuarios_plano ON usuarios(plano_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_status_plano ON usuarios(status_plano);
 CREATE INDEX IF NOT EXISTS idx_progresso_usuario ON progresso_licoes(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulario_usuario ON vocabulario_usuario(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulario_revisao ON vocabulario_usuario(proxima_revisao);
 CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes_estudo(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_historico_usuario ON historico_aulas(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_historico_aula ON historico_aulas(aula_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_usuario ON historico_pagamentos(usuario_id);
 
--- Adiciona coluna aula_atual se não existir
+-- Adiciona colunas se não existirem
 DO $$
 BEGIN
+  -- Adiciona plano_id se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'plano_id'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN plano_id INTEGER DEFAULT NULL;
+  END IF;
+
+  -- Adiciona status_plano se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'status_plano'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN status_plano VARCHAR(20) DEFAULT 'teste_gratuito';
+  END IF;
+
+  -- Adiciona data_inicio_plano se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'data_inicio_plano'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN data_inicio_plano TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+  END IF;
+
+  -- Adiciona data_fim_plano se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'data_fim_plano'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN data_fim_plano TIMESTAMP DEFAULT NULL;
+  END IF;
+
+  -- Adiciona tempo_teste_usado se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'tempo_teste_usado'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN tempo_teste_usado INTEGER DEFAULT 0;
+  END IF;
+
+  -- Adiciona limite_teste_minutos se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'limite_teste_minutos'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN limite_teste_minutos INTEGER DEFAULT 10;
+  END IF;
+
+  -- Adiciona idiomas_disponiveis se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'idiomas_disponiveis'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN idiomas_disponiveis TEXT[] DEFAULT ARRAY[]::TEXT[];
+  END IF;
+
+  -- Adiciona idioma_teste se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'idioma_teste'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN idioma_teste VARCHAR(50) DEFAULT NULL;
+  END IF;
+
+  -- Adiciona aula_atual se não existir
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'usuarios' AND column_name = 'aula_atual'

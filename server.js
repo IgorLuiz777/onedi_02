@@ -5,7 +5,10 @@ import {
   consultarUsuario,
   salvarUsuario,
   atualizarStreak,
-  salvarHistoricoAula
+  salvarHistoricoAula,
+  verificarAcessoIdioma,
+  definirIdiomaTestе,
+  verificarStatusPlano
 } from './src/database.js';
 import {
   detectarGenero,
@@ -17,10 +20,12 @@ import {
   mostrarProgresso,
   mostrarInfoAulaAtual,
   avancarProximaAula,
+  mostrarStatusPlano,
   validarIdioma,
   validarModoEstudo,
   calcularNivel,
-  normalizarTexto
+  normalizarTexto,
+  verificarLimitesTempo
 } from './src/messageHandler.js';
 import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
 import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
@@ -53,7 +58,7 @@ wppconnect
   })
   .then((client) => {
     console.log('🚀 Conectado ao WhatsApp!');
-    console.log('📚 Sistema de Ensino de Idiomas com Aula Guiada Interativa Ativo');
+    console.log('📚 Sistema de Ensino de Idiomas com Sistema de Planos Ativo');
 
     client.onMessage(async (message) => {
       const user = message.from;
@@ -69,9 +74,9 @@ wppconnect
       contadorMensagens[user]++;
 
       if (message.type === 'ptt' || message.type === 'audio') {
-        await client.startTyping(user); // Inicia feedback de digitando
+        await client.startTyping(user);
         await processarAudioDoAluno(client, user, message);
-        await client.stopTyping(user); // Para feedback de digitando
+        await client.stopTyping(user);
         return;
       }
 
@@ -98,21 +103,20 @@ wppconnect
         return;
       }
 
-      // Verifica se é uma ação de áudio - APENAS se há lastResponse
+      // Verifica se é uma ação de áudio - APENAS se há lastResponse E modo aula_guiada
       if ((message.selectedRowId === 'enviar_audio' ||
         textoMsg === 'áudio' ||
         textoMsg === 'audio' ||
         textoMsg === '🔊 áudio' ||
         textoMsg === '🔊 audio' ||
         textoMsg.includes('áudio') ||
-        textoMsg.includes('audio')) && lastResponses[user]) {
+        textoMsg.includes('audio')) && lastResponses[user] && estados[user]?.modo === 'aula_guiada') {
 
         try {
           await client.startTyping(user);
           console.log(`🔊 Gerando áudio otimizado: ${lastResponses[user]}`);
           const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          // Usa a função otimizada para professor com o gênero do usuário
           const generoUsuario = estados[user]?.genero || 'feminino';
           const audioBuffer = await gerarAudioProfessor(
             lastResponses[user],
@@ -133,17 +137,6 @@ wppconnect
         return;
       }
 
-      // Se chegou até aqui e é uma solicitação de áudio/tradução sem lastResponse, informa o usuário
-      // Só mostra essa mensagem se o usuário já estiver na etapa de estudo (etapa 4)
-      if (
-        (textoMsg.includes('áudio') || textoMsg.includes('audio') || textoMsg.includes('traduzir')) &&
-        !lastResponses[user] &&
-        estados[user]?.etapa === 4
-      ) {
-        await client.sendText(user, 'Não há mensagem para converter em áudio. Envie uma mensagem primeiro!');
-        return;
-      }
-
       try {
         await client.startTyping(user);
         const comando = processarComandoEspecial(message.body);
@@ -157,6 +150,9 @@ wppconnect
 
         if (!estados[user]) {
           if (usuarioBanco) {
+            // Verifica status do plano antes de continuar
+            const statusPlano = await verificarStatusPlano(user);
+
             estados[user] = {
               nome: usuarioBanco.nome,
               genero: usuarioBanco.genero,
@@ -167,11 +163,18 @@ wppconnect
               pontuacao: usuarioBanco.pontuacao,
               streak: usuarioBanco.streak_dias,
               aula_atual: usuarioBanco.aula_atual || 1,
-              etapaAulaAtual: 'EXPLICACAO_INICIAL'
+              etapaAulaAtual: 'EXPLICACAO_INICIAL',
+              statusPlano: statusPlano.status_plano,
+              tempoRestante: statusPlano.tempo_restante_minutos
             };
 
             const novoStreak = await atualizarStreak(user);
             estados[user].streak = novoStreak;
+
+            // Mostra status do plano se necessário
+            if (statusPlano.status_plano === 'teste_gratuito' && statusPlano.tempo_restante_minutos <= 3) {
+              await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!`);
+            }
 
             await mostrarMenuPrincipal(client, user, estados[user]);
             await client.stopTyping(user);
@@ -223,6 +226,14 @@ wppconnect
     async function processarAudioDoAluno(client, user, message) {
       try {
         console.log('🎤 Processando áudio do aluno...');
+
+        // Verifica limites de tempo antes de processar
+        const usuarioBanco = await consultarUsuario(user);
+        if (usuarioBanco) {
+          const podeUsar = await verificarLimitesTempo(client, user, usuarioBanco, 1);
+          if (!podeUsar) return;
+        }
+
         await client.sendText(user, '🔄 Analisando seu áudio... Um momento!');
 
         const mediaData = await client.downloadMedia(message);
@@ -244,7 +255,6 @@ wppconnect
             estados[user]?.idioma || 'Inglês'
           );
 
-          // Monta resposta detalhada
           const feedback = `
 🎤 **Análise da sua Pronúncia**
 
@@ -277,7 +287,6 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         } else {
           console.log('🎤 Processando áudio como mensagem de texto...');
 
-          const usuarioBanco = await consultarUsuario(user);
           const resultado = await processarModoEstudo(estados[user], resultadoTranscricao.texto, usuarioBanco);
 
           lastResponses[user] = resultado.resposta;
@@ -286,6 +295,24 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           respostaCompleta += resultado.resposta;
 
           await client.sendText(user, respostaCompleta);
+
+          // Envia áudio automaticamente para modos que não são aula_guiada
+          if (estados[user]?.modo !== 'aula_guiada') {
+            try {
+              const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const generoUsuario = estados[user]?.genero || 'feminino';
+              const audioBuffer = await gerarAudioProfessor(
+                resultado.resposta,
+                estados[user]?.idioma || 'Inglês',
+                nomeArquivo,
+                generoUsuario
+              );
+              const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+              await client.sendPttFromBase64(user, audioBase64);
+            } catch (audioError) {
+              console.error('Erro ao gerar áudio automático:', audioError);
+            }
+          }
 
           if (resultado.imagemGerada) {
             try {
@@ -297,7 +324,8 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
             }
           }
 
-          await enviarOpcoesMensagem(client, user, estados[user].idioma);
+          // Só mostra opções de áudio para aula_guiada
+          await enviarOpcoesMensagem(client, user, estados[user].idioma, estados[user]?.modo === 'aula_guiada');
 
           await enviarLembreteRecursos(client, user);
         }
@@ -318,6 +346,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
       // Atualiza o estado se necessário
       if (!estados[user]) {
+        const statusPlano = await verificarStatusPlano(user);
         estados[user] = {
           nome: usuarioBanco.nome,
           genero: usuarioBanco.genero,
@@ -328,7 +357,8 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           pontuacao: usuarioBanco.pontuacao,
           streak: usuarioBanco.streak_dias,
           aula_atual: usuarioBanco.aula_atual || 1,
-          etapaAulaAtual: 'EXPLICACAO_INICIAL'
+          etapaAulaAtual: 'EXPLICACAO_INICIAL',
+          statusPlano: statusPlano.status_plano
         };
       }
 
@@ -340,14 +370,16 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         case 'ver_progresso':
           await mostrarProgresso(client, user, usuarioBanco);
           break;
+        case 'ver_status_plano':
+          await mostrarStatusPlano(client, user, usuarioBanco);
+          break;
         case 'info_aula_atual':
           await mostrarInfoAulaAtual(client, user, usuarioBanco);
           break;
         case 'proxima_aula':
           await avancarProximaAula(client, user, usuarioBanco);
-          // Atualiza o estado local
           estados[user].aula_atual = (usuarioBanco.aula_atual || 1) + 1;
-          estados[user].etapaAulaAtual = 'EXPLICACAO_INICIAL'; // Reset da etapa
+          estados[user].etapaAulaAtual = 'EXPLICACAO_INICIAL';
           break;
         case 'revisar_vocabulario':
           const revisao = await iniciarRevisaoVocabulario(usuarioBanco.id, usuarioBanco.idioma);
@@ -359,14 +391,64 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         case 'ver_streak':
           await client.sendText(user, `🔥 Sua sequência atual: ${usuarioBanco.streak_dias} dias consecutivos!`);
           break;
+        case 'ver_planos':
+          await mostrarPlanos(client, user);
+          break;
         case 'mostrar_ajuda':
           await mostrarAjuda(client, user);
           break;
       }
     }
 
+    async function mostrarPlanos(client, user) {
+      const planosTexto = `💎 **Planos ONEDI - IA Educacional**
+
+🚀 **Escolha o plano ideal para seu aprendizado:**
+
+📦 **BÁSICO** - R$ 29,90/mês
+• 1 idioma à sua escolha
+• Todos os recursos de IA
+• Acesso ilimitado
+• Suporte padrão
+
+📦 **INTERMEDIÁRIO** - R$ 49,90/mês
+• 2 idiomas à sua escolha
+• Todos os recursos de IA
+• Acesso ilimitado
+• Suporte prioritário
+
+📦 **AVANÇADO** - R$ 69,90/mês
+• 3 idiomas à sua escolha
+• Todos os recursos de IA
+• Acesso ilimitado
+• Suporte VIP
+
+📦 **PREMIUM** - R$ 89,90/mês
+• TODOS os idiomas disponíveis
+• Todos os recursos de IA
+• Acesso ilimitado
+• Suporte VIP + Consultoria
+
+✨ **Recursos Inclusos em Todos os Planos:**
+🤖 IA Avançada Completa
+🖼️ Geração de Imagens Educativas
+🎤 Análise de Pronúncia
+🔊 Text-to-Speech HD
+📝 Correção Inteligente
+🌐 Tradução Contextual
+📚 4 Modos de Estudo
+🎯 Gamificação
+
+📞 **Para Adquirir:**
+Entre em contato conosco ou acesse nossa plataforma de pagamento.
+
+🎁 **Teste Gratuito:** 10 minutos para experimentar!`;
+
+      await client.sendText(user, planosTexto);
+    }
+
     async function iniciarCadastro(client, user, estado) {
-      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n📝 Para começar, qual é o seu nome?');
+      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n🎁 **Você tem 10 minutos de teste gratuito!**\n\n📝 Para começar, qual é o seu nome?');
       estado.etapa = 1;
     }
 
@@ -379,11 +461,11 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const nomeAssistente = genero === 'masculino' ? 'Isaias' : 'Rute';
       estado.professor = nomeAssistente;
 
-      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!`);
+      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!\n\n🎁 **Você tem 10 minutos gratuitos para testar todos os recursos!**`);
 
       await client.sendListMessage(user, {
         buttonText: 'Escolher idioma',
-        description: 'Qual idioma você deseja aprender? Temos um teste gratuito para você! 🎁',
+        description: 'Qual idioma você deseja testar? Escolha um para seu teste gratuito! 🎁',
         sections: [
           {
             title: 'Idiomas Disponíveis',
@@ -410,8 +492,11 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       }
 
       estado.idioma = idioma;
-      estado.aula_atual = 1; // Inicia na primeira aula
+      estado.aula_atual = 1;
       estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
+
+      // Define o idioma do teste
+      await definirIdiomaTestе(user, idioma);
 
       await salvarUsuario(user, {
         nome: estado.nome,
@@ -422,15 +507,16 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         nivel: 'iniciante',
         pontuacao: 0,
         streak_dias: 1,
-        aula_atual: 1
+        aula_atual: 1,
+        status_plano: 'teste_gratuito',
+        idioma_teste: idioma
       });
 
-      // Salva a primeira aula no histórico
       const primeiraAula = obterProximaAula(idioma, 0);
       const usuarioBanco = await consultarUsuario(user);
       await salvarHistoricoAula(usuarioBanco.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu aprender ${idioma}.\n\n🚀 Agora vamos começar sua jornada de aprendizado com IA avançada!`);
+      await client.sendText(user, `🎉 Excelente! Você escolheu testar ${idioma}.\n\n🎁 **Seu teste gratuito de 10 minutos começou agora!**\n\n🚀 Vamos começar sua experiência com IA avançada!`);
 
       await mostrarMenuPrincipal(client, user, estado);
       estado.etapa = 3;
@@ -447,36 +533,36 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         return;
       }
 
-      // Limpa threadIdAulaGuiada ao trocar de modo
+      // Verifica acesso ao idioma antes de continuar
+      const usuarioBanco = await consultarUsuario(user);
+      const acessoIdioma = await verificarAcessoIdioma(user, estado.idioma);
+
+      if (!acessoIdioma.acesso) {
+        await client.sendText(user, `❌ **Acesso Negado**\n\n${acessoIdioma.motivo}\n\n💎 Digite **/planos** para ver as opções de upgrade!`);
+        return;
+      }
+
       if (estado.modo !== modo && estado.threadIdAulaGuiada) {
         delete estado.threadIdAulaGuiada;
       }
       estado.modo = modo;
 
-      const usuarioBanco = await consultarUsuario(user);
-
-      // Se for aula guiada, mostra informações detalhadas e inicia
       if (modo === 'aula_guiada') {
         await mostrarMenuAulaGuiada(client, user, estado);
-
-        // Cria sessão de aula guiada aprimorada
         sessoesAulaGuiada[user] = new SessaoAulaGuiada(usuarioBanco.id, estado.idioma);
-
-        // Reset da etapa da aula
         estado.etapaAulaAtual = 'ABERTURA_AULA';
-        estado.threadIdAulaGuiada = null; // Garante que começa nova thread
+        estado.threadIdAulaGuiada = null;
 
-        // Inicia a aula automaticamente após mostrar o menu
         setTimeout(async () => {
           await client.sendText(user, '🚀 **Iniciando sua Aula Guiada Interativa!**\n\n👉 **Envie qualquer mensagem para começar a primeira etapa da aula!**');
         }, 2000);
       } else {
         const mensagensModo = {
-          'pratica_livre': '💬 **Modo Prática Livre ativado!**\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e responder normalmente.\n\n📝 Sobre o que você gostaria de conversar?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
+          'pratica_livre': '💬 **Modo Prática Livre ativado!**\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e responder com texto + áudio automaticamente.\n\n📝 Sobre o que você gostaria de conversar?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
 
-          'modo_professor': '👨‍🏫 **Modo Professor ativado!**\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\n🎤 **Dica:** Você pode enviar áudios com suas perguntas! Eu vou transcrever e explicar.\n\n📚 Qual tópico você gostaria que eu explicasse?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
+          'modo_professor': '👨‍🏫 **Modo Professor ativado!**\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\n🎤 **Dica:** Você pode enviar áudios com suas perguntas! Eu vou transcrever e explicar com texto + áudio automaticamente.\n\n📚 Qual tópico você gostaria que eu explicasse?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
 
-          'modo_vocabulario': '📖 **Modo Vocabulário ativado!**\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e ensinar vocabulário relacionado.\n\n📝 Que tipo de vocabulário você quer aprender hoje?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*'
+          'modo_vocabulario': '📖 **Modo Vocabulário ativado!**\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e ensinar vocabulário com texto + áudio automaticamente.\n\n📝 Que tipo de vocabulário você quer aprender hoje?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*'
         };
 
         await client.sendText(user, mensagensModo[modo] || 'Modo selecionado! Vamos começar?');
@@ -489,18 +575,38 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
     async function processarEstudo(client, user, estado, message, usuarioBanco) {
       if (!message.body || message.body.length === 0) return;
 
+      // Verifica limites de tempo antes de processar
+      const podeUsar = await verificarLimitesTempo(client, user, usuarioBanco, 2);
+      if (!podeUsar) return;
+
       try {
         console.log(`🎓 Processando estudo: ${message.body}`);
         const resultado = await processarModoEstudo(estado, message.body, usuarioBanco);
 
-        // Salva a última resposta para tradução/áudio
         lastResponses[user] = resultado.resposta;
         console.log(`💾 Salvando resposta para tradução/áudio: ${resultado.resposta.substring(0, 50)}...`);
 
-        // Envia a mensagem principal
         await client.sendText(user, resultado.resposta);
 
-        // Se há imagem gerada, envia a imagem
+        // Envia áudio automaticamente para todos os modos EXCETO aula_guiada
+        if (estado.modo !== 'aula_guiada') {
+          try {
+            const nomeArquivo = `audio_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const generoUsuario = estado.genero || 'feminino';
+            const audioBuffer = await gerarAudioProfessor(
+              resultado.resposta,
+              estado.idioma,
+              nomeArquivo,
+              generoUsuario
+            );
+            const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+            await client.sendPttFromBase64(user, audioBase64);
+            console.log(`🔊 Áudio automático enviado para modo ${estado.modo}`);
+          } catch (audioError) {
+            console.error('Erro ao gerar áudio automático:', audioError);
+          }
+        }
+
         if (resultado.imagemGerada) {
           try {
             await client.sendImage(user, resultado.imagemGerada.url, 'imagem-aula',
@@ -515,14 +621,12 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           }
         }
 
-        // Se há solicitação de áudio, configura o estado de espera
         if (resultado.audioSolicitado) {
           aguardandoAudio[user] = {
             textoEsperado: resultado.audioSolicitado,
             timestamp: Date.now()
           };
 
-          // Remove a espera após 5 minutos se não receber áudio
           setTimeout(() => {
             if (aguardandoAudio[user]) {
               delete aguardandoAudio[user];
@@ -530,14 +634,13 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           }, 5 * 60 * 1000);
         }
 
-        // Envia as opções de tradução e áudio apenas se não estiver esperando áudio
+        // Só mostra opções de áudio para aula_guiada, tradução para todos
         if (!aguardandoAudio[user]) {
-          await enviarOpcoesMensagem(client, user, estado.idioma);
+          await enviarOpcoesMensagem(client, user, estado.idioma, estado.modo === 'aula_guiada');
         }
 
         await enviarLembreteRecursos(client, user);
 
-        // Se for aula guiada, salva o progresso da aula atual
         if (estado.modo === 'aula_guiada' && resultado.aulaAtual) {
           await salvarHistoricoAula(
             usuarioBanco.id,
@@ -551,7 +654,6 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         if (estado.modo === 'aula_guiada' && sessoesAulaGuiada[user]) {
           const sessao = sessoesAulaGuiada[user];
 
-          // Adiciona a etapa completada
           if (estado.etapaAulaAtual) {
             sessao.adicionarEtapaCompletada(estado.etapaAulaAtual);
           }
@@ -599,9 +701,9 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
             });
 
             delete sessoesAulaGuiada[user];
-            delete aguardandoAudio[user]; // Limpa qualquer espera de áudio
+            delete aguardandoAudio[user];
             estado.etapa = 3;
-            estado.etapaAulaAtual = 'EXPLICACAO_INICIAL'; // Reset
+            estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
 
             setTimeout(() => {
               mostrarMenuPrincipal(client, user, estado);
@@ -621,13 +723,12 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
     }
 
     async function enviarLembreteRecursos(client, user) {
-      // Envia lembrete sobre recursos a cada 8 mensagens
       if (contadorMensagens[user] && contadorMensagens[user] % 8 === 0) {
         const lembretes = [
-          '🎤 **Lembrete:** Você pode enviar áudios! Eu transcrevo e respondo normalmente.\n💡 Digite **/menu** para voltar às opções principais.',
-          '🔊 **Dica:** Use os botões de áudio e tradução após minhas respostas!\n💡 Digite **/menu** a qualquer momento para mudar de modo.',
-          '📱 **Recursos disponíveis:** Áudio, tradução, imagens IA e muito mais!\n💡 Digite **/menu** para explorar outros modos de estudo.',
-          '🎯 **Aproveite:** Fale comigo por áudio para praticar sua pronúncia!\n💡 Digite **/menu** para ver seu progresso e outras opções.'
+          '🎤 **Lembrete:** Você pode enviar áudios! Eu transcrevo e respondo automaticamente.\n💡 Digite **/menu** para voltar às opções principais.',
+          '🔊 **Dica:** Nos modos Prática Livre, Professor e Vocabulário, eu envio texto + áudio automaticamente!\n💡 Digite **/menu** a qualquer momento para mudar de modo.',
+          '📱 **Recursos disponíveis:** Áudio automático, tradução, imagens IA e muito mais!\n💡 Digite **/menu** para explorar outros modos de estudo.',
+          '🎯 **Aproveite:** Fale comigo por áudio para praticar sua pronúncia!\n💡 Digite **/status** para ver seu tempo restante.'
         ];
 
         const lembreteAleatorio = lembretes[Math.floor(Math.random() * lembretes.length)];
@@ -645,12 +746,18 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 **Comandos disponíveis:**
 • */menu* - Voltar ao menu principal
 • /progresso - Ver seu progresso detalhado
+• /status - Ver status do seu plano
 • /aula - Ver informações da aula atual
 • /proxima - Avançar para a próxima aula
 • /vocabulario - Revisar palavras aprendidas
 • /nivel - Verificar seu nível atual
 • /streak - Ver sua sequência de dias
+• /planos - Ver planos disponíveis
 • /ajuda - Mostrar esta ajuda
+
+**Sistema de Planos:**
+🆓 **Teste Gratuito** - 10 minutos para experimentar
+💎 **Planos Pagos** - Acesso ilimitado com múltiplos idiomas
 
 **Modos de Estudo:**
 📚 **Aula Guiada Interativa** - Sistema completo com:
@@ -661,41 +768,44 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
    • Correção gramatical inteligente
    • Progressão estruturada
 
-💬 **Prática Livre** - Conversação natural
-👨‍🏫 **Modo Professor** - Explicações detalhadas
-📖 **Modo Vocabulário** - Aprendizado de palavras
+💬 **Prática Livre** - Conversação natural + áudio automático
+👨‍🏫 **Modo Professor** - Explicações detalhadas + áudio automático
+📖 **Modo Vocabulário** - Aprendizado de palavras + áudio automático
 
 **Recursos de IA Avançada:**
 🖼️ **Geração de Imagens** - Imagens educativas personalizadas
 🎤 **Análise de Pronúncia** - Feedback detalhado de fala
-🔊 **Text-to-Speech** - Áudio de alta qualidade
+🔊 **Text-to-Speech Automático** - Áudio de alta qualidade (exceto aula guiada)
 📝 **Correção Inteligente** - IA corrige e explica erros
 🌐 **Tradução Instantânea** - Tradução contextual
 🎙️ **Speech-to-Text** - Envie áudios em qualquer modo!
 
-**Como usar áudios em todos os modos:**
+**Áudio Automático:**
+🔊 **Nos modos Prática Livre, Professor e Vocabulário:**
+• Recebo sua mensagem (texto ou áudio)
+• Respondo com texto
+• Envio áudio automaticamente
+• Você pode solicitar tradução
+
+🎤 **No modo Aula Guiada:**
+• Áudio sob demanda via botão
+• Exercícios de pronúncia específicos
+• Análise detalhada de fala
+
+**Como usar áudios:**
 🎤 **Em qualquer modo de estudo:**
 1. Grave um áudio com sua mensagem/pergunta
 2. Eu vou transcrever automaticamente
 3. Respondo como se fosse texto normal
-4. Você recebe correções e feedback
-
-**Como usar a Aula Guiada Interativa:**
-1. Selecione "Aula Guiada Contínua"
-2. Siga as instruções do professor IA
-3. Responda às perguntas de múltipla escolha
-4. Descreva as imagens geradas
-5. Grave áudios quando solicitado
-6. Forme frases para correção
-7. Complete todas as etapas da aula
+4. Nos modos não-guiados, envio áudio automaticamente
 
 **Dicas:**
 • Estude todos os dias para manter sua sequência
 • Use o áudio para melhorar a pronúncia
 • Grave áudios claros para melhor análise
-• Descreva as imagens com detalhes
 • Complete as aulas em sequência
 • **Digite /menu sempre que quiser mudar de atividade**
+• **Digite /status para verificar seu tempo restante**
 
 Precisa de mais ajuda? Entre em contato conosco! 📞
       `;
@@ -719,7 +829,7 @@ setInterval(() => {
       console.log(`🧹 Limpou estado de áudio antigo para ${user}`);
     }
   }
-}, 60 * 1000); // Executa a cada minuto
+}, 60 * 1000);
 
 setInterval(() => {
   for (const user in contadorMensagens) {
@@ -731,12 +841,10 @@ setInterval(() => {
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Erro não tratado:', err);
-  // Não encerra o processo, apenas loga o erro
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Rejeição de promessa não tratada:', reason);
-  // Não encerra o processo, apenas loga o erro
 });
 
-console.log('🔄 Iniciando sistema de aula guiada interativa com IA completa...');
+console.log('🔄 Iniciando sistema com planos e áudio automático...');
