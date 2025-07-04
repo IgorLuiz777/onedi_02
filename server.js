@@ -171,9 +171,17 @@ wppconnect
             const novoStreak = await atualizarStreak(user);
             estados[user].streak = novoStreak;
 
-            // Mostra status do plano se necessário
             if (statusPlano.status_plano === 'teste_gratuito' && statusPlano.tempo_restante_minutos <= 3) {
-              await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!`);
+              await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!\n\nPara continuar estudando sem limites, acesse: https://onedi-lp.vercel.app/ e escolha seu plano!`);
+              try {
+                const fs = await import('fs/promises');
+                const videoBuffer = await fs.readFile('video/onedi.mp4');
+                const videoBase64 = videoBuffer.toString('base64');
+                await client.sendPttFromBase64(user, videoBase64);
+              } catch (videoError) {
+                console.error('Erro ao enviar vídeo promocional:', videoError);
+                await client.sendText(user, 'Não foi possível enviar o vídeo promocional, mas você pode acessar https://onedi-lp.vercel.app/ para saber mais!');
+              }
             }
 
             await mostrarMenuPrincipal(client, user, estados[user]);
@@ -672,7 +680,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 • Questões respondidas: ${resultadoSessao.questoesRespondidas}
 • Questões corretas: ${resultadoSessao.questoesCorretas}
 • Aproveitamento: ${resultadoSessao.aproveitamento}%
-• Etapas completadas: ${resultadoSessao.etapasCompletadas}/11
+• Etapas completadas: ${resultadoSessao.etapasCompletas}/11
 • Imagens analisadas: ${resultadoSessao.imagensGeradas}
 • Áudios analisados: ${resultadoSessao.audiosAnalisados}
 
@@ -710,7 +718,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
             }, 3000);
 
           } else {
-            await client.sendText(user, `⏱️ **Progresso da Sessão Interativa:**\n📝 Questões restantes: ${limites.questoesRestantes}\n⏰ Tempo restante: ${limites.tempoRestante} min\n🎯 Etapas completadas: ${limites.etapasCompletadas}/11`);
+            await client.sendText(user, `⏱️ **Progresso da Sessão Interativa:**\n📝 Questões restantes: ${limites.questoesRestantes}\n⏰ Tempo restante: ${limites.tempoRestante} min\n🎯 Etapas completadas: ${limites.etapasCompletas}/11`);
           }
         }
 
