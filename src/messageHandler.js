@@ -9,7 +9,7 @@ import {
   verificarAcessoIdioma,
   definirIdiomaTestе,
   verificarStatusPlano
-} from './src/database.js';
+} from './database.js';
 import {
   detectarGenero,
   enviarMensagemCompleta,
