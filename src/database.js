@@ -10,15 +10,15 @@ const pool = new Pool({
 });
 
 export async function salvarUsuario(telefone, dados) {
-  const { 
+  const {
     nome, genero, idioma, professor, etapa, nivel, pontuacao, streak_dias, aula_atual,
-    plano_id, status_plano, idiomas_disponiveis, idioma_teste 
+    plano_id, status_plano, idiomas_disponiveis, idioma_teste
   } = dados;
 
   const query = `
     INSERT INTO usuarios (
-      telefone, nome, genero, idioma, professor, etapa, nivel, pontuacao, 
-      streak_dias, aula_atual, plano_id, status_plano, idiomas_disponiveis, 
+      telefone, nome, genero, idioma, professor, etapa, nivel, pontuacao,
+      streak_dias, aula_atual, plano_id, status_plano, idiomas_disponiveis,
       idioma_teste, updated_at
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
@@ -43,7 +43,7 @@ export async function salvarUsuario(telefone, dados) {
   const result = await pool.query(query, [
     telefone, nome, genero, idioma, professor, etapa,
     nivel || 'iniciante', pontuacao || 0, streak_dias || 0, aula_atual || 1,
-    plano_id || null, status_plano || 'teste_gratuito', 
+    plano_id || null, status_plano || 'teste_gratuito',
     idiomas_disponiveis || [], idioma_teste || null
   ]);
 
@@ -51,21 +51,41 @@ export async function salvarUsuario(telefone, dados) {
 }
 
 export async function consultarUsuario(telefone) {
-  const result = await pool.query(
+  let result = await pool.query(
     'SELECT * FROM usuarios WHERE telefone = $1',
     [telefone]
   );
-  return result.rows[0];
+  if (result.rows.length > 0) return result.rows[0];
+
+  if (telefone.endsWith('@c.us')) {
+    const telefoneSemSufixo = telefone.replace(/@c\.us$/, '');
+    result = await pool.query(
+      'SELECT * FROM usuarios WHERE telefone = $1',
+      [telefoneSemSufixo]
+    );
+    if (result.rows.length > 0) return result.rows[0];
+  }
+
+  if (!telefone.endsWith('@c.us')) {
+    const telefoneComSufixo = telefone + '@c.us';
+    result = await pool.query(
+      'SELECT * FROM usuarios WHERE telefone = $1',
+      [telefoneComSufixo]
+    );
+    if (result.rows.length > 0) return result.rows[0];
+  }
+
+  return null;
 }
 
 export async function verificarStatusPlano(telefone) {
   const query = `
-    SELECT 
+    SELECT
       u.*,
       p.nome as nome_plano,
       p.quantidade_idiomas,
       p.duracao_dias,
-      CASE 
+      CASE
         WHEN u.status_plano = 'teste_gratuito' THEN u.limite_teste_minutos - u.tempo_teste_usado
         WHEN u.status_plano = 'ativo' AND u.data_fim_plano > CURRENT_TIMESTAMP THEN -1
         ELSE 0
@@ -74,27 +94,27 @@ export async function verificarStatusPlano(telefone) {
     LEFT JOIN planos p ON u.plano_id = p.id
     WHERE u.telefone = $1
   `;
-  
+
   const result = await pool.query(query, [telefone]);
   return result.rows[0];
 }
 
 export async function atualizarTempoTeste(telefone, minutosUsados) {
   const query = `
-    UPDATE usuarios 
+    UPDATE usuarios
     SET tempo_teste_usado = tempo_teste_usado + $2,
         ultima_atividade = CURRENT_TIMESTAMP
     WHERE telefone = $1
     RETURNING tempo_teste_usado, limite_teste_minutos
   `;
-  
+
   const result = await pool.query(query, [telefone, minutosUsados]);
   return result.rows[0];
 }
 
 export async function ativarPlano(telefone, planoId, idiomasEscolhidos) {
   const query = `
-    UPDATE usuarios 
+    UPDATE usuarios
     SET plano_id = $2,
         status_plano = 'ativo',
         data_inicio_plano = CURRENT_TIMESTAMP,
@@ -104,46 +124,46 @@ export async function ativarPlano(telefone, planoId, idiomasEscolhidos) {
     WHERE telefone = $1
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [telefone, planoId, idiomasEscolhidos]);
   return result.rows[0];
 }
 
 export async function verificarAcessoIdioma(telefone, idioma) {
   const usuario = await verificarStatusPlano(telefone);
-  
+
   if (!usuario) return { acesso: false, motivo: 'Usuario não encontrado' };
-  
+
   // Se está em teste gratuito
   if (usuario.status_plano === 'teste_gratuito') {
     if (usuario.tempo_restante_minutos <= 0) {
       return { acesso: false, motivo: 'Teste gratuito expirado' };
     }
-    
+
     // No teste, pode usar qualquer idioma, mas só um por vez
     if (usuario.idioma_teste && usuario.idioma_teste !== idioma) {
-      return { 
-        acesso: false, 
-        motivo: `Teste limitado ao idioma ${usuario.idioma_teste}` 
+      return {
+        acesso: false,
+        motivo: `Teste limitado ao idioma ${usuario.idioma_teste}`
       };
     }
-    
+
     return { acesso: true, tipo: 'teste', tempo_restante: usuario.tempo_restante_minutos };
   }
-  
+
   // Se tem plano ativo
   if (usuario.status_plano === 'ativo') {
     if (usuario.data_fim_plano && new Date(usuario.data_fim_plano) < new Date()) {
       return { acesso: false, motivo: 'Plano expirado' };
     }
-    
+
     if (!usuario.idiomas_disponiveis || !usuario.idiomas_disponiveis.includes(idioma)) {
       return { acesso: false, motivo: 'Idioma não incluído no seu plano' };
     }
-    
+
     return { acesso: true, tipo: 'plano', plano: usuario.nome_plano };
   }
-  
+
   return { acesso: false, motivo: 'Status de plano inválido' };
 }
 
@@ -156,13 +176,13 @@ export async function obterPlanos() {
 export async function registrarPagamento(usuarioId, planoId, valor, transactionId, metodoPagamento) {
   const query = `
     INSERT INTO historico_pagamentos (
-      usuario_id, plano_id, valor, status, metodo_pagamento, 
+      usuario_id, plano_id, valor, status, metodo_pagamento,
       transaction_id, data_vencimento
     )
     VALUES ($1, $2, $3, 'pendente', $4, $5, CURRENT_TIMESTAMP + INTERVAL '7 days')
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [
     usuarioId, planoId, valor, metodoPagamento, transactionId
   ]);
@@ -171,24 +191,24 @@ export async function registrarPagamento(usuarioId, planoId, valor, transactionI
 
 export async function confirmarPagamento(transactionId) {
   const query = `
-    UPDATE historico_pagamentos 
+    UPDATE historico_pagamentos
     SET status = 'aprovado', data_pagamento = CURRENT_TIMESTAMP
     WHERE transaction_id = $1
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [transactionId]);
   return result.rows[0];
 }
 
 export async function definirIdiomaTestе(telefone, idioma) {
   const query = `
-    UPDATE usuarios 
+    UPDATE usuarios
     SET idioma_teste = $2, idioma = $2
     WHERE telefone = $1
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, [telefone, idioma]);
   return result.rows[0];
 }

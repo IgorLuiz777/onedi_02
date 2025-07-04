@@ -47,7 +47,7 @@ const contadorMensagens = {};
 
 wppconnect
   .create({
-    session: 'session-teste',
+    session: 'session-04-07',
     headless: true,
     multiDevice: true,
     phoneNumber: '553193796314',
