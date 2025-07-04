@@ -66,6 +66,13 @@ wppconnect
       // if (user !== '5511980483504@c.us') return;
       if (message.isGroupMsg || user.endsWith('@status') || user === 'status@broadcast') return;
 
+      // Ignora mensagens antigas (mais de 10 minutos)
+      const agora = Math.floor(Date.now() / 1000);
+      if (message.timestamp && agora - message.timestamp > 600) {
+        console.log(`⏳ Ignorando mensagem antiga de ${user} (timestamp: ${message.timestamp})`);
+        return;
+      }
+
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
       console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
 
