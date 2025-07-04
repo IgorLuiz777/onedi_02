@@ -21,11 +21,15 @@ import {
   mostrarInfoAulaAtual,
   avancarProximaAula,
   mostrarStatusPlano,
+  mostrarSelecaoIdioma,
+  processarSelecaoIdioma,
+  mostrarPersonalizarPlano,
   validarIdioma,
   validarModoEstudo,
   calcularNivel,
   normalizarTexto,
-  verificarLimitesTempo
+  verificarLimitesTempo,
+  enviarLembreteRecursos
 } from './src/messageHandler.js';
 import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
 import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
@@ -50,7 +54,7 @@ wppconnect
     session: 'session-teste',
     headless: true,
     multiDevice: true,
-    phoneNumber: '553193796314',
+    phoneNumber: '5511915389938',
     catchLinkCode: (str) => console.log('Code: ' + str),
     forceLinkCode: true,
     puppeteerOptions: {
@@ -61,8 +65,13 @@ wppconnect
     console.log('🚀 Conectado ao WhatsApp!');
     console.log('📚 Sistema de Ensino de Idiomas com Sistema de Planos Ativo');
 
+    function extrairNumeroWhatsapp(idWhatsapp) {
+      return idWhatsapp.replace('@c.us', '');
+    }
+
     client.onMessage(async (message) => {
       const user = message.from;
+      const numeroLimpo = extrairNumeroWhatsapp(user);
 
       // if (user !== '5511980483504@c.us') return;
       if (message.isGroupMsg || user.endsWith('@status') || user === 'status@broadcast') return;
@@ -72,6 +81,18 @@ wppconnect
       if (message.timestamp && agora - message.timestamp > 600) {
         console.log(`⏳ Ignorando mensagem antiga de ${user} (timestamp: ${message.timestamp})`);
         return;
+      }
+
+      let usuarioBancoLog = null;
+      try {
+        usuarioBancoLog = await consultarUsuario(numeroLimpo);
+        if (usuarioBancoLog) {
+          console.log(`🔎 Usuário encontrado no banco: ${JSON.stringify(usuarioBancoLog)}`);
+        } else {
+          console.log(`🔎 Usuário NÃO encontrado no banco: ${numeroLimpo}`);
+        }
+      } catch (e) {
+        console.error('Erro ao consultar usuário para log:', e);
       }
 
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
@@ -154,19 +175,19 @@ wppconnect
           return;
         }
 
-        let usuarioBanco = await consultarUsuario(user);
+        let usuarioBanco = await consultarUsuario(numeroLimpo);
 
         if (!estados[user]) {
           if (usuarioBanco) {
             // Verifica status do plano antes de continuar
-            const statusPlano = await verificarStatusPlano(user);
+            const statusPlano = await verificarStatusPlano(numeroLimpo);
 
             estados[user] = {
               nome: usuarioBanco.nome,
               genero: usuarioBanco.genero,
               idioma: usuarioBanco.idioma,
               professor: usuarioBanco.professor,
-              etapa: 3, // Vai direto para seleção de modo
+              etapa: usuarioBanco.idioma ? 3 : 2.5, // Se não tem idioma, vai para seleção
               nivel: usuarioBanco.nivel,
               pontuacao: usuarioBanco.pontuacao,
               streak: usuarioBanco.streak_dias,
@@ -176,21 +197,21 @@ wppconnect
               tempoRestante: statusPlano.tempo_restante_minutos
             };
 
-            const novoStreak = await atualizarStreak(user);
+            const novoStreak = await atualizarStreak(numeroLimpo);
             estados[user].streak = novoStreak;
 
             // Mostra status do plano se necessário
             if (statusPlano.status_plano === 'teste_gratuito' && statusPlano.tempo_restante_minutos <= 3) {
-              await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!\n\nPara continuar estudando sem limites, acesse: https://onedi-lp.vercel.app/ e escolha seu plano!`);
-              try {
-                const fs = await import('fs/promises');
-                const videoBuffer = await fs.readFile('video/onedi.mp4');
-                const videoBase64 = videoBuffer.toString('base64');
-                await client.sendPttFromBase64(user, videoBase64);
-              } catch (videoError) {
-                console.error('Erro ao enviar vídeo promocional:', videoError);
-                await client.sendText(user, 'Não foi possível enviar o vídeo promocional, mas você pode acessar https://onedi-lp.vercel.app/ para saber mais!');
-              }
+              await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!\n\nPara continuar estudando sem limites, digite **/personalizar** para criar seu plano ideal!`);
+            }
+
+            // Se não tem idioma definido, vai para seleção de idioma
+            if (!usuarioBanco.idioma) {
+              await client.sendText(user, `👋 **Bem-vindo de volta, ${usuarioBanco.nome}!**\n\n🌐 **Primeiro, vamos selecionar seu idioma de estudo:**`);
+              await mostrarSelecaoIdioma(client, user, usuarioBanco);
+              estados[user].etapa = 2.5; // Aguardando seleção de idioma
+              await client.stopTyping(user);
+              return;
             }
 
             await mostrarMenuPrincipal(client, user, estados[user]);
@@ -221,6 +242,18 @@ wppconnect
           return;
         }
 
+        if (estado.etapa === 2.5) {
+          // Processando seleção de idioma para usuário existente
+          const resultado = await processarSelecaoIdioma(client, user, usuarioBanco, message);
+          if (resultado && resultado.idiomaSelecionado) {
+            estado.idioma = resultado.idiomaSelecionado;
+            estado.etapa = 3;
+            await mostrarMenuPrincipal(client, user, estado);
+          }
+          await client.stopTyping(user);
+          return;
+        }
+
         if (estado.etapa === 3) {
           await processarSelecaoModoEstudo(client, user, estado, message);
           await client.stopTyping(user);
@@ -236,7 +269,7 @@ wppconnect
       } catch (error) {
         await client.stopTyping(user);
         console.error('❌ Erro ao processar mensagem:', error);
-        await client.sendText(user, 'Desculpe, ocorreu um erro. Tente novamente ou digite /menu para voltar ao início.');
+        await client.sendText(user, 'Desculpe, ocorreu um erro. Tente novamente ou digite **/menu** para voltar ao início.');
       }
     });
 
@@ -244,8 +277,10 @@ wppconnect
       try {
         console.log('🎤 Processando áudio do aluno...');
 
+        // Extrai número limpo para consulta
+        const numeroLimpo = extrairNumeroWhatsapp(user);
         // Verifica limites de tempo antes de processar
-        const usuarioBanco = await consultarUsuario(user);
+        const usuarioBanco = await consultarUsuario(numeroLimpo);
         if (usuarioBanco) {
           const podeUsar = await verificarLimitesTempo(client, user, usuarioBanco, 1);
           if (!podeUsar) return;
@@ -285,6 +320,8 @@ ${analise.analiseCompleta}
 ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
               analise.pontuacao >= 60 ? '👍 Boa pronúncia, continue praticando!' :
                 '💪 Continue praticando, você vai melhorar!'}
+
+💡 **Comandos úteis:** /menu | /idioma
           `;
 
           await client.sendText(user, feedback);
@@ -298,7 +335,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
           if (estados[user]?.modo === 'aula_guiada') {
             setTimeout(async () => {
-              await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.');
+              await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.\n\n💡 **Comandos úteis:** /menu | /idioma');
             }, 2000);
           }
         } else {
@@ -344,18 +381,19 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           // Só mostra opções de áudio para aula_guiada
           await enviarOpcoesMensagem(client, user, estados[user].idioma, estados[user]?.modo === 'aula_guiada');
 
-          await enviarLembreteRecursos(client, user);
+          await enviarLembreteRecursos(client, user, contadorMensagens[user]);
         }
 
       } catch (error) {
         console.error('❌ Erro ao processar áudio do aluno:', error);
-        await client.sendText(user, '❌ Desculpe, não consegui processar seu áudio. Tente gravar novamente ou digite /menu para outras opções!');
+        await client.sendText(user, '❌ Desculpe, não consegui processar seu áudio. Tente gravar novamente ou digite **/menu** para outras opções!');
         delete aguardandoAudio[user];
       }
     }
 
     async function processarComando(client, user, comando) {
-      const usuarioBanco = await consultarUsuario(user);
+      const numeroLimpo = extrairNumeroWhatsapp(user);
+      const usuarioBanco = await consultarUsuario(numeroLimpo);
       if (!usuarioBanco) {
         await client.sendText(user, 'Você precisa se cadastrar primeiro. Envie qualquer mensagem para começar!');
         return;
@@ -363,13 +401,13 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 
       // Atualiza o estado se necessário
       if (!estados[user]) {
-        const statusPlano = await verificarStatusPlano(user);
+        const statusPlano = await verificarStatusPlano(numeroLimpo);
         estados[user] = {
           nome: usuarioBanco.nome,
           genero: usuarioBanco.genero,
           idioma: usuarioBanco.idioma,
           professor: usuarioBanco.professor,
-          etapa: 3,
+          etapa: usuarioBanco.idioma ? 3 : 2.5,
           nivel: usuarioBanco.nivel,
           pontuacao: usuarioBanco.pontuacao,
           streak: usuarioBanco.streak_dias,
@@ -382,7 +420,18 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       switch (comando) {
         case 'menu_principal':
           contadorMensagens[user] = 0;
-          await mostrarMenuPrincipal(client, user, estados[user]);
+          if (!estados[user].idioma) {
+            await client.sendText(user, `🌐 **Primeiro, vamos selecionar seu idioma de estudo:**`);
+            await mostrarSelecaoIdioma(client, user, usuarioBanco);
+            estados[user].etapa = 2.5;
+          } else {
+            await mostrarMenuPrincipal(client, user, estados[user]);
+          }
+          break;
+        case 'trocar_idioma':
+          await client.sendText(user, `🌐 **Trocar Idioma**\n\nVamos selecionar um novo idioma para seus estudos:`);
+          await mostrarSelecaoIdioma(client, user, usuarioBanco);
+          estados[user].etapa = 2.5;
           break;
         case 'ver_progresso':
           await mostrarProgresso(client, user, usuarioBanco);
@@ -403,65 +452,18 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           await client.sendText(user, revisao.mensagem);
           break;
         case 'verificar_nivel':
-          await client.sendText(user, `🎯 Seu nível atual: ${usuarioBanco.nivel.charAt(0).toUpperCase() + usuarioBanco.nivel.slice(1)}`);
+          await client.sendText(user, `🎯 Seu nível atual: ${usuarioBanco.nivel.charAt(0).toUpperCase() + usuarioBanco.nivel.slice(1)}\n\n💡 **Comandos úteis:** /menu | /idioma`);
           break;
         case 'ver_streak':
-          await client.sendText(user, `🔥 Sua sequência atual: ${usuarioBanco.streak_dias} dias consecutivos!`);
+          await client.sendText(user, `🔥 Sua sequência atual: ${usuarioBanco.streak_dias} dias consecutivos!\n\n💡 **Comandos úteis:** /menu | /idioma`);
           break;
-        case 'ver_planos':
-          await mostrarPlanos(client, user);
+        case 'personalizar_plano':
+          await mostrarPersonalizarPlano(client, user);
           break;
         case 'mostrar_ajuda':
           await mostrarAjuda(client, user);
           break;
       }
-    }
-
-    async function mostrarPlanos(client, user) {
-      const planosTexto = `💎 **Planos ONEDI - IA Educacional**
-
-🚀 **Escolha o plano ideal para seu aprendizado:**
-
-📦 **BÁSICO** - R$ 29,90/mês
-• 1 idioma à sua escolha
-• Todos os recursos de IA
-• Acesso ilimitado
-• Suporte padrão
-
-📦 **INTERMEDIÁRIO** - R$ 49,90/mês
-• 2 idiomas à sua escolha
-• Todos os recursos de IA
-• Acesso ilimitado
-• Suporte prioritário
-
-📦 **AVANÇADO** - R$ 69,90/mês
-• 3 idiomas à sua escolha
-• Todos os recursos de IA
-• Acesso ilimitado
-• Suporte VIP
-
-📦 **PREMIUM** - R$ 89,90/mês
-• TODOS os idiomas disponíveis
-• Todos os recursos de IA
-• Acesso ilimitado
-• Suporte VIP + Consultoria
-
-✨ **Recursos Inclusos em Todos os Planos:**
-🤖 IA Avançada Completa
-🖼️ Geração de Imagens Educativas
-🎤 Análise de Pronúncia
-🔊 Text-to-Speech HD
-📝 Correção Inteligente
-🌐 Tradução Contextual
-📚 4 Modos de Estudo
-🎯 Gamificação
-
-📞 **Para Adquirir:**
-Entre em contato conosco ou acesse nossa plataforma de pagamento.
-
-🎁 **Teste Gratuito:** 10 minutos para experimentar!`;
-
-      await client.sendText(user, planosTexto);
     }
 
     async function iniciarCadastro(client, user, estado) {
@@ -513,9 +515,10 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
       estado.etapaAulaAtual = 'EXPLICACAO_INICIAL';
 
       // Define o idioma do teste
-      await definirIdiomaTestе(user, idioma);
+      const numeroLimpo = extrairNumeroWhatsapp(user);
+      await definirIdiomaTestе(numeroLimpo, idioma);
 
-      await salvarUsuario(user, {
+      await salvarUsuario(numeroLimpo, {
         nome: estado.nome,
         genero: estado.genero,
         idioma: estado.idioma,
@@ -530,10 +533,10 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
       });
 
       const primeiraAula = obterProximaAula(idioma, 0);
-      const usuarioBanco = await consultarUsuario(user);
+      const usuarioBanco = await consultarUsuario(numeroLimpo);
       await salvarHistoricoAula(usuarioBanco.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu testar ${idioma}.\n\n🎁 **Seu teste gratuito de 10 minutos começou agora!**\n\n🚀 Vamos começar sua experiência com IA avançada!`);
+      await client.sendText(user, `🎉 Excelente! Você escolheu testar ${idioma}.\n\n🎁 **Seu teste gratuito de 10 minutos começou agora!**\n\n🚀 Vamos começar sua experiência com IA avançada!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
 
       await mostrarMenuPrincipal(client, user, estado);
       estado.etapa = 3;
@@ -551,11 +554,12 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
       }
 
       // Verifica acesso ao idioma antes de continuar
-      const usuarioBanco = await consultarUsuario(user);
-      const acessoIdioma = await verificarAcessoIdioma(user, estado.idioma);
+      const numeroLimpo = extrairNumeroWhatsapp(user);
+      const usuarioBanco = await consultarUsuario(numeroLimpo);
+      const acessoIdioma = await verificarAcessoIdioma(numeroLimpo, estado.idioma);
 
       if (!acessoIdioma.acesso) {
-        await client.sendText(user, `❌ **Acesso Negado**\n\n${acessoIdioma.motivo}\n\n💎 Digite **/planos** para ver as opções de upgrade!`);
+        await client.sendText(user, `❌ **Acesso Negado**\n\n${acessoIdioma.motivo}\n\n💎 Digite **/personalizar** para ver as opções de upgrade!\n\n💡 **Comandos úteis:** /menu | /idioma`);
         return;
       }
 
@@ -571,15 +575,15 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
         estado.threadIdAulaGuiada = null;
 
         setTimeout(async () => {
-          await client.sendText(user, '🚀 **Iniciando sua Aula Guiada Interativa!**\n\n👉 **Envie qualquer mensagem para começar a primeira etapa da aula!**');
+          await client.sendText(user, '🚀 **Iniciando sua Aula Guiada Interativa!**\n\n👉 **Envie qualquer mensagem para começar a primeira etapa da aula!**\n\n💡 **Comandos úteis:** /menu | /idioma');
         }, 2000);
       } else {
         const mensagensModo = {
-          'pratica_livre': '💬 **Modo Prática Livre ativado!**\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e responder com texto + áudio automaticamente.\n\n📝 Sobre o que você gostaria de conversar?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
+          'pratica_livre': '💬 **Modo Prática Livre ativado!**\n\nVamos ter uma conversa natural. Eu vou corrigir seus erros e te ajudar a melhorar.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e responder com texto + áudio automaticamente.\n\n📝 Sobre o que você gostaria de conversar?\n\n💡 **Comandos úteis:** /menu | /idioma',
 
-          'modo_professor': '👨‍🏫 **Modo Professor ativado!**\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\n🎤 **Dica:** Você pode enviar áudios com suas perguntas! Eu vou transcrever e explicar com texto + áudio automaticamente.\n\n📚 Qual tópico você gostaria que eu explicasse?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*',
+          'modo_professor': '👨‍🏫 **Modo Professor ativado!**\n\nEstou aqui para explicar qualquer dúvida detalhadamente.\n\n🎤 **Dica:** Você pode enviar áudios com suas perguntas! Eu vou transcrever e explicar com texto + áudio automaticamente.\n\n📚 Qual tópico você gostaria que eu explicasse?\n\n💡 **Comandos úteis:** /menu | /idioma',
 
-          'modo_vocabulario': '📖 **Modo Vocabulário ativado!**\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e ensinar vocabulário com texto + áudio automaticamente.\n\n📝 Que tipo de vocabulário você quer aprender hoje?\n\n💡 *Digite /menu a qualquer momento para voltar às opções*'
+          'modo_vocabulario': '📖 **Modo Vocabulário ativado!**\n\nVou te ensinar palavras novas e revisar as que você já aprendeu.\n\n🎤 **Dica:** Você pode enviar áudios! Eu vou transcrever e ensinar vocabulário com texto + áudio automaticamente.\n\n📝 Que tipo de vocabulário você quer aprender hoje?\n\n💡 **Comandos úteis:** /menu | /idioma'
         };
 
         await client.sendText(user, mensagensModo[modo] || 'Modo selecionado! Vamos começar?');
@@ -656,7 +660,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
           await enviarOpcoesMensagem(client, user, estado.idioma, estado.modo === 'aula_guiada');
         }
 
-        await enviarLembreteRecursos(client, user);
+        await enviarLembreteRecursos(client, user, contadorMensagens[user]);
 
         if (estado.modo === 'aula_guiada' && resultado.aulaAtual) {
           await salvarHistoricoAula(
@@ -704,7 +708,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 
 🚀 **Parabéns pelo seu progresso interativo!**
 
-💡 *Dica: Use /proxima para avançar para a próxima aula quando estiver pronto!*
+💡 **Comandos úteis:** /proxima | /menu | /idioma
             `);
 
             const novaPontuacao = (usuarioBanco.pontuacao || 0) + resultadoSessao.pontosGanhos;
@@ -727,7 +731,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
             }, 3000);
 
           } else {
-            await client.sendText(user, `⏱️ **Progresso da Sessão Interativa:**\n📝 Questões restantes: ${limites.questoesRestantes}\n⏰ Tempo restante: ${limites.tempoRestante} min\n🎯 Etapas completadas: ${limites.etapasCompletadas}/11`);
+            await client.sendText(user, `⏱️ **Progresso da Sessão Interativa:**\n📝 Questões restantes: ${limites.questoesRestantes}\n⏰ Tempo restante: ${limites.tempoRestante} min\n🎯 Etapas completadas: ${limites.etapasCompletadas}/11\n\n💡 **Comandos úteis:** /menu | /idioma`);
           }
         }
 
@@ -735,24 +739,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 
       } catch (error) {
         console.error('Erro ao processar estudo:', error);
-        await client.sendText(user, 'Desculpe, houve um problema. Vamos tentar novamente!\n\n💡 *Digite /menu para voltar às opções principais*');
-      }
-    }
-
-    async function enviarLembreteRecursos(client, user) {
-      if (contadorMensagens[user] && contadorMensagens[user] % 8 === 0) {
-        const lembretes = [
-          '🎤 **Lembrete:** Você pode enviar áudios! Eu transcrevo e respondo automaticamente.\n💡 Digite **/menu** para voltar às opções principais.',
-          '🔊 **Dica:** Nos modos Prática Livre, Professor e Vocabulário, eu envio texto + áudio automaticamente!\n💡 Digite **/menu** a qualquer momento para mudar de modo.',
-          '📱 **Recursos disponíveis:** Áudio automático, tradução, imagens IA e muito mais!\n💡 Digite **/menu** para explorar outros modos de estudo.',
-          '🎯 **Aproveite:** Fale comigo por áudio para praticar sua pronúncia!\n💡 Digite **/status** para ver seu tempo restante.'
-        ];
-
-        const lembreteAleatorio = lembretes[Math.floor(Math.random() * lembretes.length)];
-
-        setTimeout(async () => {
-          await client.sendText(user, lembreteAleatorio);
-        }, 2000);
+        await client.sendText(user, 'Desculpe, houve um problema. Vamos tentar novamente!\n\n💡 **Comandos úteis:** /menu | /idioma');
       }
     }
 
@@ -762,6 +749,7 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 
 **Comandos disponíveis:**
 • */menu* - Voltar ao menu principal
+• */idioma* - Trocar de idioma
 • /progresso - Ver seu progresso detalhado
 • /status - Ver status do seu plano
 • /aula - Ver informações da aula atual
@@ -769,12 +757,12 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 • /vocabulario - Revisar palavras aprendidas
 • /nivel - Verificar seu nível atual
 • /streak - Ver sua sequência de dias
-• /planos - Ver planos disponíveis
+• /personalizar - Personalizar seu plano
 • /ajuda - Mostrar esta ajuda
 
 **Sistema de Planos:**
 🆓 **Teste Gratuito** - 10 minutos para experimentar
-💎 **Planos Pagos** - Acesso ilimitado com múltiplos idiomas
+💎 **Planos Flexíveis** - Escolha de 1 a 4 idiomas
 
 **Modos de Estudo:**
 📚 **Aula Guiada Interativa** - Sistema completo com:
@@ -816,12 +804,19 @@ Entre em contato conosco ou acesse nossa plataforma de pagamento.
 3. Respondo como se fosse texto normal
 4. Nos modos não-guiados, envio áudio automaticamente
 
+**Troca de Idiomas:**
+🌐 **Digite /idioma a qualquer momento para:**
+• Ver seus idiomas disponíveis
+• Trocar para outro idioma do seu plano
+• Continuar estudando em outro idioma
+
 **Dicas:**
 • Estude todos os dias para manter sua sequência
 • Use o áudio para melhorar a pronúncia
 • Grave áudios claros para melhor análise
 • Complete as aulas em sequência
 • **Digite /menu sempre que quiser mudar de atividade**
+• **Digite /idioma para trocar de idioma**
 • **Digite /status para verificar seu tempo restante**
 
 Precisa de mais ajuda? Entre em contato conosco! 📞
@@ -864,4 +859,4 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Rejeição de promessa não tratada:', reason);
 });
 
-console.log('🔄 Iniciando sistema com planos e áudio automático...');
+console.log('🔄 Iniciando sistema com seleção de idioma dinâmica...');

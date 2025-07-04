@@ -1,7 +1,7 @@
 import { gerarAudio } from './audioService.js';
 import { gerarTraducao } from './studyModes.js';
 import { obterProximaAula, calcularProgressoNivel } from './lessonProgression.js';
-import { salvarHistoricoAula, atualizarAulaAtual, verificarStatusPlano, verificarAcessoIdioma, definirIdiomaTestе } from './database.js';
+import { salvarHistoricoAula, atualizarAulaAtual, verificarStatusPlano, verificarAcessoIdioma, definirIdiomaTestе, salvarUsuario } from './database.js';
 import OpenAI from 'openai';
 import { mp3ToBase64 } from './mp3ToBase64.js';
 
@@ -75,17 +75,130 @@ export function processarComandoEspecial(mensagem) {
     '/proxima': 'proxima_aula',
     '/aula': 'info_aula_atual',
     '/planos': 'ver_planos',
-    '/status': 'ver_status_plano'
+    '/status': 'ver_status_plano',
+    '/idioma': 'trocar_idioma',
+    '/personalizar': 'personalizar_plano'
   };
 
   const comando = mensagem.toLowerCase().trim();
   return comandos[comando] || null;
 }
 
+export async function mostrarSelecaoIdioma(client, user, usuarioBanco) {
+  const { idiomas_selecionados, status_plano } = usuarioBanco;
+
+  let idiomasDisponiveis = [];
+
+  if (status_plano === 'teste_gratuito') {
+    // No teste, pode escolher qualquer idioma, mas só um
+    idiomasDisponiveis = ['Inglês', 'Espanhol', 'Francês', 'Mandarim'];
+  } else if (status_plano === 'ativo' && idiomas_selecionados && idiomas_selecionados.length > 0) {
+    // Plano ativo: apenas idiomas do plano
+    idiomasDisponiveis = idiomas_selecionados;
+  } else {
+    // Fallback: todos os idiomas
+    idiomasDisponiveis = ['Inglês', 'Espanhol', 'Francês', 'Mandarim'];
+  }
+
+  if (idiomasDisponiveis.length === 0) {
+    await client.sendText(user, `❌ **Erro:** Nenhum idioma disponível em seu plano.\n\n💎 Digite **/personalizar** para configurar seu plano!`);
+    return;
+  }
+
+  if (idiomasDisponiveis.length === 1) {
+    // Se só tem um idioma, seleciona automaticamente
+    const idioma = idiomasDisponiveis[0];
+    await salvarUsuario(usuarioBanco.telefone, {
+      ...usuarioBanco,
+      idioma: idioma,
+      etapa: 3
+    });
+
+    await client.sendText(user, `🎯 **Idioma Selecionado:** ${idioma}\n\n🚀 Vamos começar seus estudos!`);
+    return { idiomaSelecionado: idioma };
+  }
+
+  // Monta as opções de idiomas disponíveis
+  const rows = idiomasDisponiveis.map(idioma => {
+    const emojis = {
+      'Inglês': '🇺🇸',
+      'Espanhol': '🇪🇸',
+      'Francês': '🇫🇷',
+      'Mandarim': '🇨🇳'
+    };
+
+    const descricoes = {
+      'Inglês': 'O idioma mais falado no mundo',
+      'Espanhol': 'Segundo idioma mais falado',
+      'Francês': 'A língua do amor e da cultura',
+      'Mandarim': 'O idioma do futuro'
+    };
+
+    return {
+      rowId: idioma.toLowerCase(),
+      title: `${emojis[idioma]} ${idioma}`,
+      description: descricoes[idioma]
+    };
+  });
+
+  const textoSelecao = status_plano === 'teste_gratuito'
+    ? `🎁 **Teste Gratuito - Escolha seu Idioma**\n\nVocê tem 10 minutos para testar qualquer idioma!\n\n🎯 **Qual idioma você gostaria de experimentar?**`
+    : `🌐 **Seus Idiomas Disponíveis**\n\n📚 **Idiomas do seu plano:** ${idiomasDisponiveis.join(', ')}\n\n🎯 **Qual idioma você quer estudar agora?**`;
+
+  await client.sendListMessage(user, {
+    buttonText: 'Escolher idioma',
+    description: textoSelecao,
+    sections: [
+      {
+        title: status_plano === 'teste_gratuito' ? 'Idiomas para Teste' : 'Seus Idiomas',
+        rows: rows
+      }
+    ]
+  });
+
+  return { aguardandoSelecaoIdioma: true };
+}
+
+export async function processarSelecaoIdioma(client, user, usuarioBanco, message) {
+  const idiomaInput = message.selectedRowId || message.body.trim();
+  const idioma = validarIdioma(idiomaInput);
+
+  if (!idioma) {
+    await client.sendText(user, '❌ Por favor, selecione um idioma válido clicando no botão.');
+    return false;
+  }
+
+  // Verifica se o usuário tem acesso ao idioma
+  const acessoIdioma = await verificarAcessoIdioma(usuarioBanco.telefone, idioma);
+
+  if (!acessoIdioma.acesso) {
+    await client.sendText(user, `❌ **Acesso Negado**\n\n${acessoIdioma.motivo}\n\n💎 Digite **/personalizar** para configurar seu plano!`);
+    return false;
+  }
+
+  // Salva o idioma selecionado
+  await salvarUsuario(usuarioBanco.telefone, {
+    ...usuarioBanco,
+    idioma: idioma,
+    etapa: 3
+  });
+
+  // Se é teste gratuito, define como idioma do teste
+  if (usuarioBanco.status_plano === 'teste_gratuito') {
+    await definirIdiomaTestе(usuarioBanco.telefone, idioma);
+  }
+
+  await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🚀 Agora você pode começar seus estudos!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+
+  return { idiomaSelecionado: idioma };
+}
+
 export async function mostrarMenuPrincipal(client, user, estado) {
   const menuTexto = `👋 **Olá ${estado.nome}!**
 
 🎓 **Bem-vindo de volta à ONEDI - sua escola de idiomas com IA!**
+
+📚 **Idioma atual:** ${estado.idioma}
 
 🚀 **O que você gostaria de fazer hoje?**
 
@@ -156,6 +269,7 @@ export async function mostrarMenuAulaGuiada(client, user, estado) {
 🎯 **Gamificação** - Sistema de pontos e recompensas
 
 📚 **Sua Jornada Atual:**
+🌐 **Idioma:** ${estado.idioma}
 🎯 **Nível:** ${progressoInfo.nivel.charAt(0).toUpperCase() + progressoInfo.nivel.slice(1)} (${Math.round(progressoInfo.progresso)}% completo)
 📖 **Aula:** ${aulaAtual.id} - ${aulaAtual.topico}
 📝 **Conteúdo:** ${aulaAtual.conteudo}
@@ -184,7 +298,9 @@ export async function mostrarMenuAulaGuiada(client, user, estado) {
 ⏱️ **Duração:** 45-50 minutos de aprendizado intensivo
 🎯 **Objetivo:** Domínio completo do tópico da aula
 
-🚀 **Pronto para uma experiência de aprendizado revolucionária?**`;
+🚀 **Pronto para uma experiência de aprendizado revolucionária?**
+
+💡 **Comandos úteis:** /menu | /idioma | /status`;
 
   await client.sendText(user, menuTexto);
 }
@@ -201,6 +317,7 @@ export async function mostrarProgresso(client, user, usuarioBanco) {
 🤖 **Sistema:** ONEDI - IA Educacional
 
 🎯 **Status Atual:**
+🌐 **Idioma:** ${idioma}
 📈 **Nível:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
 📊 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
 ⭐ **Pontuação Total:** ${pontuacao} pontos
@@ -235,6 +352,8 @@ export async function mostrarProgresso(client, user, usuarioBanco) {
 • **/proxima** - Avançar para próxima aula
 • **/aula** - Detalhes da aula atual
 • **/vocabulario** - Revisar palavras aprendidas
+• **/idioma** - Trocar de idioma
+• **/menu** - Voltar ao menu principal
 
 🚀 **Continue sua jornada de aprendizado!**`;
 
@@ -243,33 +362,34 @@ export async function mostrarProgresso(client, user, usuarioBanco) {
 
 export async function mostrarStatusPlano(client, user, usuarioBanco) {
   const statusPlano = await verificarStatusPlano(usuarioBanco.telefone);
-  
+
   let statusTexto = `💎 **Status do Seu Plano**\n\n`;
-  
+
   if (statusPlano.status_plano === 'teste_gratuito') {
     const tempoRestante = statusPlano.tempo_restante_minutos;
     statusTexto += `🆓 **Teste Gratuito Ativo**\n\n`;
     statusTexto += `⏱️ **Tempo Restante:** ${tempoRestante} minutos\n`;
     statusTexto += `📚 **Idioma do Teste:** ${statusPlano.idioma_teste || statusPlano.idioma}\n`;
     statusTexto += `🎯 **Limite Total:** ${statusPlano.limite_teste_minutos} minutos\n\n`;
-    
+
     if (tempoRestante <= 2) {
       statusTexto += `⚠️ **Atenção:** Seu teste está quase acabando!\n\n`;
       statusTexto += `🚀 **Adquira um plano para continuar aprendendo:**\n`;
-      statusTexto += `• Digite **/planos** para ver as opções disponíveis\n`;
+      statusTexto += `• Digite **/personalizar** para criar seu plano\n`;
       statusTexto += `• Acesso ilimitado a todos os recursos\n`;
       statusTexto += `• Múltiplos idiomas disponíveis\n`;
     } else {
       statusTexto += `💡 **Aproveite seu teste gratuito!**\n`;
       statusTexto += `• Experimente todos os modos de estudo\n`;
       statusTexto += `• Teste os recursos de IA avançada\n`;
-      statusTexto += `• Digite **/planos** para ver opções de upgrade\n`;
+      statusTexto += `• Digite **/personalizar** para ver opções de upgrade\n`;
     }
   } else if (statusPlano.status_plano === 'ativo') {
-    statusTexto += `✅ **Plano Ativo: ${statusPlano.nome_plano}**\n\n`;
+    statusTexto += `✅ **Plano Ativo Personalizado**\n\n`;
     statusTexto += `📅 **Válido até:** ${new Date(statusPlano.data_fim_plano).toLocaleDateString('pt-BR')}\n`;
-    statusTexto += `🌐 **Idiomas Disponíveis:** ${statusPlano.idiomas_disponiveis?.length || 0}\n`;
-    statusTexto += `📚 **Idiomas:** ${statusPlano.idiomas_disponiveis?.join(', ') || 'Nenhum'}\n\n`;
+    statusTexto += `🌐 **Quantidade de Idiomas:** ${statusPlano.quantidade_idiomas}\n`;
+    statusTexto += `📚 **Seus Idiomas:** ${statusPlano.idiomas_selecionados?.join(', ') || 'Nenhum'}\n`;
+    statusTexto += `💰 **Valor:** R$ ${statusPlano.valor_plano?.toFixed(2) || '0,00'}/mês\n\n`;
     statusTexto += `🎯 **Recursos Inclusos:**\n`;
     statusTexto += `• ✅ Acesso ilimitado\n`;
     statusTexto += `• ✅ Todos os modos de estudo\n`;
@@ -278,11 +398,13 @@ export async function mostrarStatusPlano(client, user, usuarioBanco) {
   } else {
     statusTexto += `❌ **Plano Expirado**\n\n`;
     statusTexto += `🚀 **Renove seu plano para continuar:**\n`;
-    statusTexto += `• Digite **/planos** para ver as opções\n`;
+    statusTexto += `• Digite **/personalizar** para ver as opções\n`;
     statusTexto += `• Mantenha seu progresso salvo\n`;
     statusTexto += `• Continue de onde parou\n`;
   }
-  
+
+  statusTexto += `\n💡 **Comandos úteis:** /menu | /idioma | /personalizar`;
+
   await client.sendText(user, statusTexto);
 }
 
@@ -296,6 +418,7 @@ export async function mostrarInfoAulaAtual(client, user, usuarioBanco) {
 🤖 **ONEDI - Sistema de Aula Interativa**
 
 🆔 **Identificação da Aula:**
+🌐 **Idioma:** ${idioma}
 📖 **Número:** ${aulaInfo.id}
 🎯 **Tópico:** ${aulaInfo.topico}
 📝 **Conteúdo:** ${aulaInfo.conteudo}
@@ -330,7 +453,9 @@ export async function mostrarInfoAulaAtual(client, user, usuarioBanco) {
 
 💡 **Dica Especial:** Use o modo "Aula Guiada Interativa" para ter acesso a todos os recursos de IA desta aula e uma experiência de aprendizado completa e personalizada!
 
-🚀 **Pronto para começar?** Selecione "Aula Guiada Interativa" no menu principal!`;
+🚀 **Pronto para começar?** Selecione "Aula Guiada Interativa" no menu principal!
+
+💡 **Comandos úteis:** /menu | /idioma | /proxima`;
 
   await client.sendText(user, infoTexto);
 }
@@ -355,7 +480,9 @@ export async function avancarProximaAula(client, user, usuarioBanco) {
 👨‍🏫 **Modo Professor** - Aprofunde conhecimentos
 📖 **Modo Vocabulário** - Expanda seu repertório
 
-🤖 **Todos os recursos de IA continuam disponíveis para seu aperfeiçoamento!**`);
+🤖 **Todos os recursos de IA continuam disponíveis para seu aperfeiçoamento!**
+
+💡 **Comandos úteis:** /menu | /idioma | /status`);
     return;
   }
 
@@ -372,6 +499,7 @@ export async function avancarProximaAula(client, user, usuarioBanco) {
 🤖 **ONEDI - Progressão Automática**
 
 📚 **Sua Nova Aula:**
+🌐 **Idioma:** ${idioma}
 🆔 **Número:** ${proximaAula.id}
 📖 **Tópico:** ${proximaAula.topico}
 📝 **Conteúdo:** ${proximaAula.conteudo}
@@ -395,7 +523,9 @@ export async function avancarProximaAula(client, user, usuarioBanco) {
 
 🚀 **Pronto para a próxima etapa?**
 
-👉 **Selecione "Aula Guiada Interativa" no menu para começar!**`;
+👉 **Selecione "Aula Guiada Interativa" no menu para começar!**
+
+💡 **Comandos úteis:** /menu | /idioma | /aula`;
 
   await client.sendText(user, mensagem);
 }
@@ -548,45 +678,112 @@ export async function enviarOpcoesMensagem(client, user, idioma, incluirAudio = 
 
 export async function verificarLimitesTempo(client, user, usuarioBanco, minutosUsados = 2) {
   const statusPlano = await verificarStatusPlano(usuarioBanco.telefone);
-  
+
   if (statusPlano.status_plano === 'teste_gratuito') {
     const tempoRestante = statusPlano.tempo_restante_minutos - minutosUsados;
-    
+
     if (tempoRestante <= 0) {
       await client.sendText(user, `⏰ **Teste Gratuito Finalizado!**
 
 🎉 **Parabéns por experimentar a ONEDI!**
 
-🚀 **Para continuar aprendendo, escolha um de nossos planos:**
+🚀 **Para continuar aprendendo, personalize seu plano:**
 
-💎 **Planos Disponíveis:**
-• **Básico** - 1 idioma por R$ 29,90/mês
-• **Intermediário** - 2 idiomas por R$ 49,90/mês  
-• **Avançado** - 3 idiomas por R$ 69,90/mês
-• **Premium** - Todos os idiomas por R$ 89,90/mês
+💎 **Planos Flexíveis:**
+• **1 Idioma** - R$ 29,90/mês
+• **2 Idiomas** - R$ 49,90/mês
+• **3 Idiomas** - R$ 69,90/mês
+• **4 Idiomas** - R$ 89,90/mês
 
 ✨ **Benefícios dos Planos:**
 • ✅ Acesso ilimitado a todos os recursos
 • ✅ IA avançada completa
-• ✅ Múltiplos idiomas
+• ✅ Escolha seus idiomas favoritos
 • ✅ Suporte prioritário
 
-📞 **Para adquirir seu plano:**
-Entre em contato conosco ou acesse nossa plataforma de pagamento.
+📞 **Para personalizar seu plano:**
+Digite **/personalizar** ou entre em contato conosco.
 
-💡 **Digite /planos para mais informações!**`);
-      
+💡 **Comandos úteis:** /personalizar | /menu`);
+
       return false; // Bloqueia o acesso
     } else if (tempoRestante <= 2) {
       await client.sendText(user, `⚠️ **Atenção:** Restam apenas ${tempoRestante} minutos do seu teste gratuito!
 
-🚀 **Adquira um plano para continuar sem interrupções!**
-Digite **/planos** para ver as opções.`);
+🚀 **Personalize um plano para continuar sem interrupções!**
+Digite **/personalizar** para ver as opções.
+
+💡 **Comandos úteis:** /personalizar | /menu | /idioma`);
     }
-    
+
     // Atualiza o tempo usado
     await import('./database.js').then(db => db.atualizarTempoTeste(usuarioBanco.telefone, minutosUsados));
   }
-  
+
   return true; // Permite o acesso
+}
+
+export async function enviarLembreteRecursos(client, user, contadorMensagens) {
+  if (contadorMensagens && contadorMensagens % 8 === 0) {
+    const lembretes = [
+      '🎤 **Lembrete:** Você pode enviar áudios! Eu transcrevo e respondo automaticamente.\n💡 Digite **/menu** para voltar às opções principais.',
+      '🔊 **Dica:** Nos modos Prática Livre, Professor e Vocabulário, eu envio texto + áudio automaticamente!\n💡 Digite **/menu** a qualquer momento para mudar de modo.',
+      '📱 **Recursos disponíveis:** Áudio automático, tradução, imagens IA e muito mais!\n💡 Digite **/menu** para explorar outros modos de estudo.',
+      '🎯 **Aproveite:** Fale comigo por áudio para praticar sua pronúncia!\n💡 Digite **/status** para ver seu tempo restante.',
+      '🌐 **Dica:** Digite **/idioma** para trocar de idioma a qualquer momento!\n💡 Digite **/menu** para voltar ao menu principal.'
+    ];
+
+    const lembreteAleatorio = lembretes[Math.floor(Math.random() * lembretes.length)];
+
+    setTimeout(async () => {
+      await client.sendText(user, lembreteAleatorio);
+    }, 2000);
+  }
+}
+
+export async function mostrarPersonalizarPlano(client, user) {
+  const textoPersonalizacao = `💎 **Personalize Seu Plano ONEDI**
+
+🎯 **Crie o plano perfeito para suas necessidades!**
+
+🌐 **Escolha de 1 a 4 idiomas:**
+• 🇺🇸 **Inglês** - O idioma mais falado no mundo
+• 🇪🇸 **Espanhol** - Segundo idioma mais falado
+• 🇫🇷 **Francês** - A língua do amor e da cultura
+• 🇨🇳 **Mandarim** - O idioma do futuro
+
+💰 **Preços por Quantidade:**
+• **1 Idioma** - R$ 29,90/mês
+• **2 Idiomas** - R$ 49,90/mês
+• **3 Idiomas** - R$ 69,90/mês
+• **4 Idiomas** - R$ 89,90/mês
+
+✨ **Todos os Planos Incluem:**
+🤖 **IA Avançada Completa**
+🖼️ **Geração de Imagens Educativas**
+🎤 **Análise de Pronúncia**
+🔊 **Text-to-Speech HD**
+📝 **Correção Inteligente**
+🌐 **Tradução Contextual**
+📚 **4 Modos de Estudo**
+🎯 **Gamificação**
+🆘 **Suporte Prioritário**
+
+🎁 **Exemplos de Combinações:**
+• **Negócios:** Inglês + Mandarim
+• **Viagens:** Inglês + Espanhol + Francês
+• **Acadêmico:** Francês + Mandarim
+• **Completo:** Todos os 4 idiomas
+
+📞 **Para Personalizar:**
+Entre em contato conosco informando:
+1. Quantos idiomas você quer (1-4)
+2. Quais idiomas específicos
+3. Seus dados para ativação
+
+💡 **Comandos úteis:** /menu | /status | /idioma
+
+🚀 **Comece sua jornada personalizada hoje mesmo!**`;
+
+  await client.sendText(user, textoPersonalizacao);
 }
