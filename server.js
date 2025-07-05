@@ -54,7 +54,7 @@ wppconnect
     session: 'session-teste',
     headless: true,
     multiDevice: true,
-    phoneNumber: '5511915389938',
+    phoneNumber: '553193796314',
     catchLinkCode: (str) => console.log('Code: ' + str),
     forceLinkCode: true,
     puppeteerOptions: {

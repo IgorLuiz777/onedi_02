@@ -142,7 +142,7 @@ export async function mostrarSelecaoIdioma(client, user, usuarioBanco) {
   });
 
   const textoSelecao = status_plano === 'teste_gratuito'
-    ? `🎁 **Teste Gratuito - Escolha seu Idioma**`
+    ? `**Escolha seu Idioma**`
     : `🌐 **Seus Idiomas Disponíveis**\n\n📚 **Idiomas do seu plano:** ${idiomasDisponiveis.join(', ')}\n\n🎯 **Qual idioma você quer estudar agora?**`;
 
   await client.sendListMessage(user, {
@@ -199,6 +199,7 @@ export async function mostrarMenuPrincipal(client, user, estado) {
 🎓 **Bem-vindo de volta à ONEDI - sua escola de idiomas com IA!**
 
 📚 **Idioma atual:** ${estado.idioma}
+📚 Digite *"/idioma"* para muda-lo
 
 🚀 **O que você gostaria de fazer hoje?**
 

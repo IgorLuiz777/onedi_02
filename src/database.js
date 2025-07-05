@@ -153,9 +153,9 @@ export async function verificarAcessoIdioma(telefone, idioma) {
 
   // Se tem plano ativo
   if (usuario.status_plano === 'ativo') {
-    if (usuario.data_fim_plano && new Date(usuario.data_fim_plano) < new Date()) {
-      return { acesso: false, motivo: 'Plano expirado' };
-    }
+    // if (usuario.data_fim_plano && new Date(usuario.data_fim_plano) < new Date()) {
+    //   return { acesso: false, motivo: 'Plano expirado' };
+    // }
 
     if (!usuario.idiomas_disponiveis || !usuario.idiomas_disponiveis.includes(idioma)) {
       return { acesso: false, motivo: 'Idioma não incluído no seu plano' };
