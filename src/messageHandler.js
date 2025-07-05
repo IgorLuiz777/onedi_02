@@ -142,7 +142,7 @@ export async function mostrarSelecaoIdioma(client, user, usuarioBanco) {
   });
 
   const textoSelecao = status_plano === 'teste_gratuito'
-    ? `🎁 **Teste Gratuito - Escolha seu Idioma**\n\nVocê tem 10 minutos para testar qualquer idioma!\n\n🎯 **Qual idioma você gostaria de experimentar?**`
+    ? `🎁 **Teste Gratuito - Escolha seu Idioma**`
     : `🌐 **Seus Idiomas Disponíveis**\n\n📚 **Idiomas do seu plano:** ${idiomasDisponiveis.join(', ')}\n\n🎯 **Qual idioma você quer estudar agora?**`;
 
   await client.sendListMessage(user, {

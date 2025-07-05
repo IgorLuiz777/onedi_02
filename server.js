@@ -168,7 +168,7 @@ wppconnect
 
       try {
         await client.startTyping(user);
-        const comando = processarComandoEspecial(message.body);
+        const comando = message.body ? processarComandoEspecial(message.body) : null;
         if (comando) {
           await processarComando(client, user, comando);
           await client.stopTyping(user);
