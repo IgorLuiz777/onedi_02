@@ -20,25 +20,25 @@ export class TestModeFlow {
   }
 
   async iniciarTeste() {
-    const mensagemInicial = `🎉 **Bem-vindo ao Teste Personalizado da ONEDI, ${this.nome}!**
+    const mensagemInicial = `🎉 **Bem-vindo ao Teste Gratuito Personalizado da ONEDI, ${this.nome}!**
 
-🤖 **Sua Experiência Personalizada de 10 Minutos**
+  🤖 **Sua Experiência Exclusiva de Idiomas**
 
-🎯 **Como funciona:**
-• Vou fazer 10 perguntas progressivas em ${this.idioma}
-• Cada pergunta será personalizada com base nos seus interesses
-• O nível aumentará gradualmente (básico → intermediário → avançado)
-• Vou detectar automaticamente seus temas favoritos
+  🎯 **Como funciona:**
+  • Vou fazer perguntas progressivas em ${this.idioma}
+  • Cada pergunta será personalizada com base nos seus interesses
+  • O nível aumentará gradualmente (básico → intermediário → avançado)
+  • Vou detectar automaticamente seus temas favoritos
 
-✨ **Recursos que você vai experimentar:**
-🔊 **Áudio HD** - Cada resposta minha virá com áudio automático
-🧠 **IA Adaptativa** - Perguntas personalizadas em tempo real
-📈 **Progressão Inteligente** - Dificuldade ajustada ao seu desempenho
-🎤 **Speech-to-Text** - Pode responder por áudio também!
+  ✨ **Recursos que você vai experimentar:**
+  🔊 **Áudio HD** - Cada resposta minha virá com áudio automático
+  🧠 **IA Adaptativa** - Perguntas personalizadas em tempo real
+  📈 **Progressão Inteligente** - Dificuldade ajustada ao seu desempenho
+  🎤 **Speech-to-Text** - Pode responder por áudio também!
 
-🚀 **Vamos começar sua jornada personalizada!**
+  🚀 **Vamos começar sua jornada personalizada!**
 
-💡 **Dica:** Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!`;
+  💡 **Dica:** Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!`;
 
     return {
       mensagem: mensagemInicial,
@@ -267,36 +267,14 @@ export class TestModeFlow {
 • 🔊 **Áudio HD:** Text-to-speech de alta qualidade
 • 🎤 **Speech-to-Text:** Reconhecimento de voz avançado
 
-✨ **O que você experimentou:**
-🧠 **Inteligência Artificial Avançada** - Adaptação em tempo real
-🎯 **Personalização Completa** - Conteúdo baseado nos seus interesses
-📚 **Metodologia Estruturada** - Progressão pedagógica inteligente
-🔊 **Recursos Multimídia** - Áudio automático e reconhecimento de voz
-
 🚀 **Continue sua Jornada com a ONEDI!**
-
-💎 **Planos Personalizados Disponíveis:**
-• **1 Idioma** - R$ 29,90/mês
-• **2 Idiomas** - R$ 49,90/mês
-• **3 Idiomas** - R$ 69,90/mês
-• **4 Idiomas** - R$ 89,90/mês
+💎 **Planos Personalizados Disponíveis!**
 
 🌐 **Acesse nosso site oficial:**
-👉 **https://onedi.com.br**
-
-📱 **Ou entre em contato conosco:**
-📞 WhatsApp: (31) 9 3796-3314
-📧 Email: contato@onedi.com.br
-
-🎬 **Veja como funciona na prática:**
-👉 **Assista ao vídeo demonstrativo:** https://onedi.com.br/video-demo
-
-🎁 **Oferta Especial para Você:**
-Use o código **TESTE10** e ganhe 10% de desconto no primeiro mês!
+👉 **https://onedi-lp.vercel.app/**
 
 💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
 
-    // Envia mensagem final com áudio
     await this.enviarRespostaComAudio(client, user, mensagemFinal);
 
     return {
@@ -318,7 +296,6 @@ Use o código **TESTE10** e ganhe 10% de desconto no primeiro mês!
   }
 }
 
-// Gerenciador global de sessões de teste
 export const sessoesTesteModo = new Map();
 
 export function iniciarTesteModo(usuarioId, idioma, nome, genero) {

@@ -537,7 +537,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
     }
 
     async function iniciarCadastro(client, user, estado) {
-      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n🎁 **Você terá uma experiência personalizada de 10 minutos!**\n\n📝 Para começar, qual é o seu nome?');
+      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n🎁 **Você terá uma experiência personalizada!**\n\n📝 Para começar, qual é o seu nome?');
       estado.etapa = 1;
     }
 
@@ -550,7 +550,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const nomeAssistente = genero === 'masculino' ? 'Isaias' : 'Rute';
       estado.professor = nomeAssistente;
 
-      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!\n\n🎁 **Você terá uma experiência personalizada de 10 minutos para testar todos os recursos!**`);
+      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!\n\n🎁 **Você terá uma experiência personalizada para testar todos os recursos!**`);
 
       await client.sendListMessage(user, {
         buttonText: 'Escolher idioma',
@@ -605,7 +605,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const primeiraAula = obterProximaAula(idioma, 0);
       await salvarHistoricoAula(usuarioSalvo.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu experimentar ${idioma}.\n\n🎁 **Sua experiência personalizada de 10 minutos começou agora!**\n\n🚀 Vamos começar com perguntas personalizadas baseadas nos seus interesses!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+      await client.sendText(user, `🎉 Excelente! Você escolheu experimentar ${idioma}.\n\n🎁 **Sua experiência personalizada começou agora!**\n\n🚀 Vamos começar com perguntas personalizadas baseadas nos seus interesses!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
 
       // NOVO: Inicia teste personalizado automaticamente
       const sessaoTeste = iniciarTesteModo(usuarioSalvo.id, idioma, estado.nome, estado.genero);
