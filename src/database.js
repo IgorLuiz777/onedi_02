@@ -338,4 +338,30 @@ export async function atualizarStreak(telefone) {
   return result.rows[0]?.streak_dias || 1;
 }
 
+// Função para salvar dados do teste personalizado usando apenas as colunas existentes
+export async function salvarDadosTeste(usuarioId, dados) {
+  const { interessesDetectados, perguntasRespondidas, nivelFinal } = dados;
+
+  const query = `
+    UPDATE usuarios
+    SET
+      interesses_detectados = $2,
+      perguntas_teste_respondidas = $3,
+      nivel_teste_final = $4,
+      teste_personalizado_concluido = true,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [
+    usuarioId,
+    interessesDetectados,
+    perguntasRespondidas,
+    nivelFinal
+  ]);
+
+  return result.rows[0];
+}
+
 export { pool };

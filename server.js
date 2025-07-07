@@ -8,7 +8,8 @@ import {
   salvarHistoricoAula,
   verificarAcessoIdioma,
   definirIdiomaTestе,
-  verificarStatusPlano
+  verificarStatusPlano,
+  salvarDadosTeste
 } from './src/database.js';
 import {
   detectarGenero,
@@ -40,6 +41,11 @@ import {
   SessaoAulaGuiada
 } from './src/studyModes.js';
 import { obterProximaAula } from './src/lessonProgression.js';
+import {
+  iniciarTesteModo,
+  obterSessaoTeste,
+  finalizarSessaoTeste
+} from './src/testModeFlow.js';
 
 dotenv.config();
 
@@ -63,7 +69,7 @@ wppconnect
   })
   .then((client) => {
     console.log('🚀 Conectado ao WhatsApp!');
-    console.log('📚 Sistema de Ensino de Idiomas com Sistema de Planos Ativo');
+    console.log('📚 Sistema de Ensino de Idiomas com Teste Personalizado Ativo');
 
     function extrairNumeroWhatsapp(idWhatsapp) {
       return idWhatsapp.replace('@c.us', '');
@@ -200,6 +206,29 @@ wppconnect
             const novoStreak = await atualizarStreak(numeroLimpo);
             estados[user].streak = novoStreak;
 
+            // NOVO: Verifica se é usuário em modo de teste
+            if (statusPlano.status_plano !== 'ativo') {
+              console.log(`🧪 Usuário em modo de teste detectado: ${numeroLimpo}`);
+
+              // Verifica se já tem sessão de teste ativa
+              let sessaoTeste = obterSessaoTeste(usuarioBanco.id);
+
+              if (!sessaoTeste && !usuarioBanco.teste_personalizado_concluido) {
+                // Inicia novo teste personalizado
+                sessaoTeste = iniciarTesteModo(usuarioBanco.id, usuarioBanco.idioma, usuarioBanco.nome, usuarioBanco.genero);
+                const resultadoInicial = await sessaoTeste.iniciarTeste();
+
+                await client.sendText(user, resultadoInicial.mensagem);
+                await client.stopTyping(user);
+                return;
+              } else if (sessaoTeste) {
+                // Continua teste em andamento
+                await client.sendText(user, `🧪 **Continuando seu Teste Personalizado**\n\n📊 **Progresso:** ${sessaoTeste.getProgresso().perguntaAtual}/10 perguntas\n\n💡 Responda à pergunta anterior para continuar!`);
+                await client.stopTyping(user);
+                return;
+              }
+            }
+
             // Mostra status do plano se necessário
             if (statusPlano.status_plano === 'teste_gratuito' && statusPlano.tempo_restante_minutos <= 3) {
               await client.sendText(user, `⚠️ **Atenção:** Restam ${statusPlano.tempo_restante_minutos} minutos do seu teste gratuito!\n\nPara continuar estudando sem limites, digite **/personalizar** para criar seu plano ideal!`);
@@ -220,6 +249,31 @@ wppconnect
           } else {
             estados[user] = { etapa: 0 };
           }
+        }
+
+        // NOVO: Verifica se há sessão de teste ativa
+        const sessaoTeste = obterSessaoTeste(usuarioBanco?.id);
+        if (sessaoTeste && usuarioBanco && usuarioBanco.status_plano !== 'ativo') {
+          console.log(`🧪 Processando resposta do teste personalizado`);
+
+          const resultado = await sessaoTeste.processarResposta(message.body, client, user);
+
+          if (resultado.testeConcluido) {
+            // Salva dados do teste no banco
+            await salvarDadosTeste(usuarioBanco.id, {
+              interessesDetectados: resultado.interessesDetectados,
+              perguntasRespondidas: resultado.perguntasRespondidas,
+              nivelFinal: resultado.nivelFinal
+            });
+
+            // Remove sessão de teste
+            finalizarSessaoTeste(usuarioBanco.id);
+
+            console.log(`✅ Teste personalizado concluído para usuário ${usuarioBanco.id}`);
+          }
+
+          await client.stopTyping(user);
+          return;
         }
 
         const estado = estados[user];
@@ -282,6 +336,13 @@ wppconnect
         // Verifica limites de tempo antes de processar
         const usuarioBanco = await consultarUsuario(numeroLimpo);
         if (usuarioBanco) {
+          // NOVO: Verifica se há sessão de teste ativa
+          const sessaoTeste = obterSessaoTeste(usuarioBanco.id);
+          if (sessaoTeste && usuarioBanco.status_plano !== 'ativo') {
+            await client.sendText(user, '🎤 **Áudio recebido!**\n\n🧪 **Modo Teste Personalizado:** Por favor, responda por texto para uma melhor experiência personalizada.\n\n💡 **Dica:** Digite sua resposta para continuar o teste!');
+            return;
+          }
+
           const podeUsar = await verificarLimitesTempo(client, user, usuarioBanco, 1);
           if (!podeUsar) return;
         }
@@ -399,6 +460,15 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         return;
       }
 
+      // NOVO: Verifica se há sessão de teste ativa
+      const sessaoTeste = obterSessaoTeste(usuarioBanco.id);
+      if (sessaoTeste && usuarioBanco.status_plano !== 'ativo') {
+        if (comando === 'menu_principal') {
+          await client.sendText(user, `🧪 **Teste Personalizado em Andamento**\n\n📊 **Progresso:** ${sessaoTeste.getProgresso().perguntaAtual}/10 perguntas\n\n💡 **Para acessar o menu principal, complete primeiro seu teste personalizado!**\n\nResponda à pergunta anterior para continuar.`);
+          return;
+        }
+      }
+
       // Atualiza o estado se necessário
       if (!estados[user]) {
         const statusPlano = await verificarStatusPlano(numeroLimpo);
@@ -467,7 +537,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
     }
 
     async function iniciarCadastro(client, user, estado) {
-      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n🎁 **Você tem 10 minutos de teste gratuito!**\n\n📝 Para começar, qual é o seu nome?');
+      await client.sendText(user, '👋 Olá! Bem-vindo à ONEDI, sua escola de idiomas inteligente com IA!\n\n🎁 **Você terá uma experiência personalizada de 10 minutos!**\n\n📝 Para começar, qual é o seu nome?');
       estado.etapa = 1;
     }
 
@@ -480,11 +550,11 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const nomeAssistente = genero === 'masculino' ? 'Isaias' : 'Rute';
       estado.professor = nomeAssistente;
 
-      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!\n\n🎁 **Você tem 10 minutos gratuitos para testar todos os recursos!**`);
+      await client.sendText(user, `Prazer em conhecê-lo, ${estado.nome}! 👨‍🏫👩‍🏫\n\nMeu nome é ${nomeAssistente} e serei seu professor de idiomas com inteligência artificial!\n\n🎁 **Você terá uma experiência personalizada de 10 minutos para testar todos os recursos!**`);
 
       await client.sendListMessage(user, {
         buttonText: 'Escolher idioma',
-        description: 'Qual idioma você deseja testar? Escolha um para seu teste gratuito! 🎁',
+        description: 'Qual idioma você deseja experimentar? Escolha um para sua experiência personalizada! 🎁',
         sections: [
           {
             title: 'Idiomas Disponíveis',
@@ -518,7 +588,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const numeroLimpo = extrairNumeroWhatsapp(user);
       await definirIdiomaTestе(numeroLimpo, idioma);
 
-      await salvarUsuario(numeroLimpo, {
+      const usuarioSalvo = await salvarUsuario(numeroLimpo, {
         nome: estado.nome,
         genero: estado.genero,
         idioma: estado.idioma,
@@ -533,12 +603,18 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       });
 
       const primeiraAula = obterProximaAula(idioma, 0);
-      const usuarioBanco = await consultarUsuario(numeroLimpo);
-      await salvarHistoricoAula(usuarioBanco.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
+      await salvarHistoricoAula(usuarioSalvo.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu testar ${idioma}.\n\n🎁 **Seu teste gratuito de 10 minutos começou agora!**\n\n🚀 Vamos começar sua experiência com IA avançada!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+      await client.sendText(user, `🎉 Excelente! Você escolheu experimentar ${idioma}.\n\n🎁 **Sua experiência personalizada de 10 minutos começou agora!**\n\n🚀 Vamos começar com perguntas personalizadas baseadas nos seus interesses!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
 
-      await mostrarMenuPrincipal(client, user, estado);
+      // NOVO: Inicia teste personalizado automaticamente
+      const sessaoTeste = iniciarTesteModo(usuarioSalvo.id, idioma, estado.nome, estado.genero);
+      const resultadoInicial = await sessaoTeste.iniciarTeste();
+
+      setTimeout(async () => {
+        await client.sendText(user, resultadoInicial.mensagem);
+      }, 2000);
+
       estado.etapa = 3;
     }
 
@@ -761,8 +837,14 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
 • /ajuda - Mostrar esta ajuda
 
 **Sistema de Planos:**
-🆓 **Teste Gratuito** - 10 minutos para experimentar
+🆓 **Teste Personalizado** - 10 perguntas adaptativas baseadas nos seus interesses
 💎 **Planos Flexíveis** - Escolha de 1 a 4 idiomas
+
+**🧪 Teste Personalizado:**
+📚 **10 Perguntas Progressivas** - Do básico ao avançado
+🎯 **Detecção de Interesses** - IA identifica seus temas favoritos
+📈 **Adaptação Inteligente** - Dificuldade ajustada em tempo real
+🔊 **Áudio Automático** - Cada resposta vem com áudio HD
 
 **Modos de Estudo:**
 📚 **Aula Guiada Interativa** - Sistema completo com:
@@ -859,4 +941,4 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Rejeição de promessa não tratada:', reason);
 });
 
-console.log('🔄 Iniciando sistema com seleção de idioma dinâmica...');
+console.log('🔄 Iniciando sistema com teste personalizado...');

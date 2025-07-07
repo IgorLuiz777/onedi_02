@@ -94,3 +94,16 @@ BEGIN
     ALTER TABLE usuarios ADD COLUMN aula_atual INTEGER DEFAULT 1;
   END IF;
 END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'usuarios' AND column_name = 'interesses_detectados'
+  ) THEN
+    ALTER TABLE usuarios ADD COLUMN interesses_detectados TEXT[];
+    ALTER TABLE usuarios ADD COLUMN perguntas_teste_respondidas INTEGER DEFAULT 0;
+    ALTER TABLE usuarios ADD COLUMN nivel_teste_final VARCHAR(20);
+    ALTER TABLE usuarios ADD COLUMN teste_personalizado_concluido BOOLEAN DEFAULT FALSE;
+  END IF;
+END $$;
