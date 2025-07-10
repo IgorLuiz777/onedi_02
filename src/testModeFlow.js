@@ -418,25 +418,39 @@ export class TestModeFlow {
 
     const mensagemFinal = `🎉 **Parabéns, ${this.nome}! Teste Concluído!**
 
-🏆 **Sua Jornada Personalizada foi Incrível!**
+  🏆 **Sua Jornada Personalizada foi Incrível!**
 
-📊 **Resumo da sua Experiência:**
-• ✅ **10 perguntas** respondidas com sucesso
-• 🎯 **Interesses detectados:** ${interessesResumo}
-• 📈 **Progressão:** Básico → Intermediário → Avançado
-• 🤖 **IA Adaptativa:** Perguntas personalizadas em tempo real
-• 🔊 **Áudio HD:** Text-to-speech de alta qualidade
-• 🎤 **Speech-to-Text:** Reconhecimento de voz avançado
+  📊 **Resumo da sua Experiência:**
+  • ✅ **10 perguntas** respondidas com sucesso
+  • 🎯 **Interesses detectados:** ${interessesResumo}
+  • 📈 **Progressão:** Básico → Intermediário → Avançado
+  • 🤖 **IA Adaptativa:** Perguntas personalizadas em tempo real
+  • 🔊 **Áudio HD:** Text-to-speech de alta qualidade
+  • 🎤 **Speech-to-Text:** Reconhecimento de voz avançado
 
-🚀 **Continue sua Jornada com a ONEDI!**
-💎 **Planos Personalizados Disponíveis!**
+  🚀 **Continue sua Jornada com a ONEDI!**
 
-🌐 **Acesse nosso site oficial:**
-👉 **https://onedi-lp.vercel.app/**
+  ✨ **Explore outros modos exclusivos:**
+  📚 **Aula Guiada Interativa** - Sistema completo com:
+     • Explicações bilíngues (idioma + português)
+     • Exercícios de múltipla escolha
+     • Geração de imagens educativas
+     • Análise de pronúncia com IA
+     • Correção gramatical inteligente
+     • Progressão estruturada
 
-💡 **Para personalizar seu plano, digite /personalizar**
+  💬 **Prática Livre** - Conversação natural + áudio automático
+  👨‍🏫 **Modo Professor** - Explicações detalhadas + áudio automático
+  📖 **Modo Vocabulário** - Aprendizado de palavras, áudio automático e correções de áudio e texto
 
-💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
+  💎 **Planos Personalizados Disponíveis!**
+
+  🌐 **Acesse nosso site oficial:**
+  👉 **https://onedi-lp.vercel.app/**
+
+  💡 **Para personalizar seu plano, digite /personalizar**
+
+  💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
 
     await this.enviarRespostaComAudio(client, user, mensagemFinal);
 
