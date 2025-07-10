@@ -4,6 +4,7 @@ import { obterProximaAula, calcularProgressoNivel } from './lessonProgression.js
 import { salvarHistoricoAula, atualizarAulaAtual, verificarStatusPlano, verificarAcessoIdioma, definirIdiomaTestе, salvarUsuario } from './database.js';
 import OpenAI from 'openai';
 import { mp3ToBase64 } from './mp3ToBase64.js';
+import { atualizarAulaAtual } from './database.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -188,14 +189,138 @@ export async function processarSelecaoIdioma(client, user, usuarioBanco, message
     await definirIdiomaTestе(usuarioBanco.telefone, idioma);
   }
 
-  // Verifica se já concluiu o teste antes de mostrar mensagem
-  if (usuarioBanco.teste_personalizado_concluido) {
-    await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🚀 Agora você pode começar seus estudos!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
-  } else {
-    await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🧪 **Iniciando seu Teste Personalizado...**\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+  await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🎯 **Agora vamos definir seu nível de conhecimento:**`);
+
+  // Mostra menu de seleção de nível
+  await mostrarSelecaoNivel(client, user, usuarioBanco, idioma);
+
+  return { idiomaSelecionado: idioma, aguardandoSelecaoNivel: true };
+}
+
+export async function mostrarSelecaoNivel(client, user, usuarioBanco, idioma) {
+  const menuTexto = `🎯 **Seleção de Nível - ${idioma}**
+
+📚 **Escolha seu nível atual de conhecimento:**
+
+💡 **Esta seleção ajudará a:**
+• Personalizar o conteúdo para seu nível
+• Definir a dificuldade inicial das perguntas
+• Otimizar sua experiência de aprendizado
+
+🎓 **Seja honesto na avaliação para obter a melhor experiência!**`;
+
+  await client.sendListMessage(user, {
+    buttonText: 'Escolher nível',
+    description: menuTexto,
+    sections: [
+      {
+        title: '📊 Níveis Disponíveis',
+        rows: [
+          {
+            rowId: 'iniciante',
+            title: '🌱 Iniciante',
+            description: 'Pouco ou nenhum conhecimento do idioma'
+          },
+          {
+            rowId: 'basico',
+            title: '📚 Básico',
+            description: 'Conhecimentos fundamentais, frases simples'
+          },
+          {
+            rowId: 'intermediario',
+            title: '🎯 Intermediário',
+            description: 'Conversação básica, gramática intermediária'
+          },
+          {
+            rowId: 'avancado',
+            title: '🚀 Avançado',
+            description: 'Fluência boa, vocabulário extenso'
+          }
+        ]
+      }
+    ]
+  });
+}
+
+export async function processarSelecaoNivel(client, user, usuarioBanco, message, idioma) {
+  const nivelInput = message.selectedRowId || message.body.trim().toLowerCase();
+  const nivel = validarNivel(nivelInput);
+
+  if (!nivel) {
+    await client.sendText(user, '❌ Por favor, selecione um nível válido clicando no botão.');
+    return false;
   }
 
-  return { idiomaSelecionado: idioma };
+  // Salva o nível selecionado
+  await salvarUsuario(usuarioBanco.telefone, {
+    ...usuarioBanco,
+    nivel: nivel,
+    idioma: idioma
+  });
+
+  // Define aula inicial baseada no nível
+  const aulaInicial = calcularAulaInicialPorNivel(nivel);
+  await atualizarAulaAtual(usuarioBanco.telefone, aulaInicial);
+
+  // Verifica se já concluiu o teste antes de prosseguir
+  if (usuarioBanco.teste_personalizado_concluido) {
+    await client.sendText(user, `✅ **Nível Selecionado:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+
+🎯 **Aula Inicial:** ${aulaInicial}
+
+🚀 **Agora você pode começar seus estudos otimizados para seu nível!**
+
+💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+
+    return { nivelSelecionado: nivel, aulaInicial: aulaInicial };
+  } else {
+    await client.sendText(user, `✅ **Nível Selecionado:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+
+🧪 **Iniciando seu Teste Personalizado adaptado ao seu nível...**
+
+🎯 **Suas perguntas serão ajustadas para o nível ${nivel}!**
+
+💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+
+    return { nivelSelecionado: nivel, aulaInicial: aulaInicial, iniciarTeste: true };
+  }
+}
+
+export function validarNivel(nivelInput) {
+  const niveisValidos = {
+    'iniciante': 'iniciante',
+    'beginner': 'iniciante',
+    '🌱 iniciante': 'iniciante',
+    'basico': 'básico',
+    'básico': 'básico',
+    'basic': 'básico',
+    '📚 basico': 'básico',
+    '📚 básico': 'básico',
+    'intermediario': 'intermediário',
+    'intermediário': 'intermediário',
+    'intermediate': 'intermediário',
+    '🎯 intermediario': 'intermediário',
+    '🎯 intermediário': 'intermediário',
+    'avancado': 'avançado',
+    'avançado': 'avançado',
+    'advanced': 'avançado',
+    '🚀 avancado': 'avançado',
+    '🚀 avançado': 'avançado'
+  };
+
+  const nivelNormalizado = normalizarTexto(nivelInput);
+  return niveisValidos[nivelNormalizado] || null;
+}
+
+export function calcularAulaInicialPorNivel(nivel) {
+  const aulasIniciais = {
+    'iniciante': 1,
+    'básico': 21,      // Pula nível iniciante
+    'intermediário': 41, // Pula iniciante e básico
+    'avançado': 61      // Pula iniciante, básico e intermediário
+  };
+
+  return aulasIniciais[nivel] || 1;
 }
 
 export async function mostrarMenuPrincipal(client, user, estado) {

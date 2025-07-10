@@ -372,7 +372,10 @@ wppconnect
         if (estado.etapa === 2.5) {
           // Processando seleção de idioma para usuário existente
           const resultado = await processarSelecaoIdioma(client, user, usuarioBanco, message);
-          if (resultado && resultado.idiomaSelecionado) {
+          if (resultado && resultado.aguardandoSelecaoNivel) {
+            estado.idioma = resultado.idiomaSelecionado;
+            estado.etapa = 2.7; // Nova etapa para seleção de nível
+          } else if (resultado && resultado.idiomaSelecionado) {
             estado.idioma = resultado.idiomaSelecionado;
             estado.etapa = 3;
 
@@ -387,6 +390,33 @@ wppconnect
               setTimeout(async () => {
                 await client.sendText(user, resultadoInicial.mensagem);
               }, 2000);
+            }
+          }
+          await client.stopTyping(user);
+          return;
+        }
+
+        if (estado.etapa === 2.7) {
+          // Processando seleção de nível
+          const resultado = await processarSelecaoNivel(client, user, usuarioBanco, message, estado.idioma);
+          if (resultado && resultado.nivelSelecionado) {
+            estado.nivel = resultado.nivelSelecionado;
+            estado.aula_atual = resultado.aulaInicial;
+            estado.etapa = 3;
+
+            // Verifica se deve iniciar teste ou mostrar menu
+            if (resultado.iniciarTeste) {
+              // Inicia teste personalizado com nível ajustado
+              const sessaoTeste = iniciarTesteModo(usuarioBanco.id, estado.idioma, estado.nome, estado.genero);
+              sessaoTeste.setNivelInicial(resultado.nivelSelecionado); // Ajusta nível inicial do teste
+              const resultadoInicial = await sessaoTeste.iniciarTeste();
+
+              setTimeout(async () => {
+                await client.sendText(user, resultadoInicial.mensagem);
+              }, 2000);
+            } else {
+              // Usuário já concluiu teste, mostra menu principal
+              await mostrarMenuPrincipal(client, user, estado);
             }
           }
           await client.stopTyping(user);

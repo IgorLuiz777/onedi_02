@@ -144,9 +144,16 @@ export class TestModeFlow {
     this.perguntaAtual = 0;
     this.maxPerguntas = 10;
     this.interessesDetectados = [];
-    this.nivelAtual = 'básico';
+    this.nivelAtual = 'básico'; // Nível padrão
+    this.nivelInicial = 'básico'; // Nível definido pelo usuário
     this.historico = [];
     this.threadId = null;
+  }
+
+  setNivelInicial(nivel) {
+    this.nivelInicial = nivel;
+    this.nivelAtual = nivel;
+    console.log(`🎯 Nível inicial do teste definido como: ${nivel}`);
   }
 
   async iniciarTeste() {
@@ -154,10 +161,12 @@ export class TestModeFlow {
 
   🤖 **Sua Experiência Exclusiva de Idiomas**
 
+  🎯 **Nível Selecionado:** ${this.nivelInicial.charAt(0).toUpperCase() + this.nivelInicial.slice(1)}
+
   🎯 **Como funciona:**
-  • Vou fazer perguntas progressivas em ${this.idioma}
+  • Vou fazer perguntas adaptadas ao seu nível em ${this.idioma}
   • Cada pergunta será personalizada com base nos seus interesses
-  • O nível aumentará gradualmente (básico → intermediário → avançado)
+  • A dificuldade será ajustada conforme seu nível selecionado
   • Vou detectar automaticamente seus temas favoritos
 
   ✨ **Recursos que você vai experimentar:**
@@ -301,12 +310,31 @@ export class TestModeFlow {
 
   async gerarProximaPergunta() {
     // Determina nível baseado na pergunta atual
-    if (this.perguntaAtual <= 3) {
-      this.nivelAtual = 'básico';
-    } else if (this.perguntaAtual <= 7) {
-      this.nivelAtual = 'intermediário';
-    } else {
-      this.nivelAtual = 'avançado';
+    // Ajusta nível baseado no nível inicial selecionado pelo usuário
+    if (this.nivelInicial === 'iniciante') {
+      if (this.perguntaAtual <= 4) {
+        this.nivelAtual = 'iniciante';
+      } else if (this.perguntaAtual <= 8) {
+        this.nivelAtual = 'básico';
+      } else {
+        this.nivelAtual = 'intermediário';
+      }
+    } else if (this.nivelInicial === 'básico') {
+      if (this.perguntaAtual <= 3) {
+        this.nivelAtual = 'básico';
+      } else if (this.perguntaAtual <= 7) {
+        this.nivelAtual = 'intermediário';
+      } else {
+        this.nivelAtual = 'avançado';
+      }
+    } else if (this.nivelInicial === 'intermediário') {
+      if (this.perguntaAtual <= 3) {
+        this.nivelAtual = 'intermediário';
+      } else {
+        this.nivelAtual = 'avançado';
+      }
+    } else if (this.nivelInicial === 'avançado') {
+      this.nivelAtual = 'avançado'; // Mantém sempre avançado
     }
 
     const interessesTexto = this.interessesDetectados.length > 0
@@ -335,7 +363,8 @@ export class TestModeFlow {
             5. Torne a pergunta interessante e relevante aos interesses do usuário
 
             NÍVEIS:
-            - Básico: Perguntas simples, presente, vocabulário básico
+            - Iniciante: Perguntas muito simples, vocabulário básico, presente
+            - Básico: Perguntas simples, presente, vocabulário fundamental
             - Intermediário: Estruturas mais complexas, passado/futuro, opinões
             - Avançado: Discussões abstratas, subjuntivo, argumentação
 
@@ -351,6 +380,9 @@ export class TestModeFlow {
           {
             role: 'user',
             content: `Gere a pergunta ${this.perguntaAtual} personalizada para os interesses: ${interessesTexto}
+
+            Nível inicial selecionado pelo usuário: ${this.nivelInicial}
+            Nível atual da pergunta: ${this.nivelAtual}
 
             Histórico das últimas respostas:
             ${this.historico.slice(-2).map(h => `P${h.pergunta}: ${h.resposta}`).join('\n')}`
@@ -382,7 +414,7 @@ export class TestModeFlow {
       console.error('Erro ao gerar pergunta:', error);
       return {
         feedback: '✅ Ótima resposta! Vamos continuar...',
-        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10**\n\nConte-me sobre seus hobbies favoritos em ${this.idioma}.`
+        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\nConte-me sobre seus hobbies favoritos em ${this.idioma}.`
       };
     }
   }
@@ -418,39 +450,25 @@ export class TestModeFlow {
 
     const mensagemFinal = `🎉 **Parabéns, ${this.nome}! Teste Concluído!**
 
-  🏆 **Sua Jornada Personalizada foi Incrível!**
+🏆 **Sua Jornada Personalizada foi Incrível!**
 
-  📊 **Resumo da sua Experiência:**
-  • ✅ **10 perguntas** respondidas com sucesso
-  • 🎯 **Interesses detectados:** ${interessesResumo}
-  • 📈 **Progressão:** Básico → Intermediário → Avançado
-  • 🤖 **IA Adaptativa:** Perguntas personalizadas em tempo real
-  • 🔊 **Áudio HD:** Text-to-speech de alta qualidade
-  • 🎤 **Speech-to-Text:** Reconhecimento de voz avançado
+📊 **Resumo da sua Experiência:**
+• ✅ **10 perguntas** respondidas com sucesso
+• 🎯 **Interesses detectados:** ${interessesResumo}
+• 📈 **Progressão:** Básico → Intermediário → Avançado
+• 🤖 **IA Adaptativa:** Perguntas personalizadas em tempo real
+• 🔊 **Áudio HD:** Text-to-speech de alta qualidade
+• 🎤 **Speech-to-Text:** Reconhecimento de voz avançado
 
-  🚀 **Continue sua Jornada com a ONEDI!**
+🚀 **Continue sua Jornada com a ONEDI!**
+💎 **Planos Personalizados Disponíveis!**
 
-  ✨ **Explore outros modos exclusivos:**
-  📚 **Aula Guiada Interativa** - Sistema completo com:
-     • Explicações bilíngues (idioma + português)
-     • Exercícios de múltipla escolha
-     • Geração de imagens educativas
-     • Análise de pronúncia com IA
-     • Correção gramatical inteligente
-     • Progressão estruturada
+🌐 **Acesse nosso site oficial:**
+👉 **https://onedi-lp.vercel.app/**
 
-  💬 **Prática Livre** - Conversação natural + áudio automático
-  👨‍🏫 **Modo Professor** - Explicações detalhadas + áudio automático
-  📖 **Modo Vocabulário** - Aprendizado de palavras, áudio automático e correções de áudio e texto
+💡 **Para personalizar seu plano, digite /personalizar**
 
-  💎 **Planos Personalizados Disponíveis!**
-
-  🌐 **Acesse nosso site oficial:**
-  👉 **https://onedi-lp.vercel.app/**
-
-  💡 **Para personalizar seu plano, digite /personalizar**
-
-  💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
+💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
 
     await this.enviarRespostaComAudio(client, user, mensagemFinal);
 
