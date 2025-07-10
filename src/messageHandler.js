@@ -188,17 +188,25 @@ export async function processarSelecaoIdioma(client, user, usuarioBanco, message
     await definirIdiomaTestе(usuarioBanco.telefone, idioma);
   }
 
-  await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🚀 Agora você pode começar seus estudos!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+  // Verifica se já concluiu o teste antes de mostrar mensagem
+  if (usuarioBanco.teste_personalizado_concluido) {
+    await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🚀 Agora você pode começar seus estudos!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+  } else {
+    await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🧪 **Iniciando seu Teste Personalizado...**\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+  }
 
   return { idiomaSelecionado: idioma };
 }
 
 export async function mostrarMenuPrincipal(client, user, estado) {
+  const nivelFormatado = estado.nivel ? estado.nivel.charAt(0).toUpperCase() + estado.nivel.slice(1) : 'Iniciante';
+
   const menuTexto = `👋 **Olá ${estado.nome}!**
 
 🎓 **Bem-vindo de volta à ONEDI - sua escola de idiomas com IA!**
 
 📚 **Idioma atual:** ${estado.idioma}
+🎯 **Seu nível atual:** ${nivelFormatado}
 📚 Digite *"/idioma"* para muda-lo
 
 🚀 **O que você gostaria de fazer hoje?**
@@ -309,6 +317,8 @@ export async function mostrarMenuAulaGuiada(client, user, estado) {
 export async function mostrarProgresso(client, user, usuarioBanco) {
   const { nome, nivel, pontuacao, streak_dias, ultima_atividade, aula_atual, idioma } = usuarioBanco;
 
+  const nivelFormatado = nivel ? nivel.charAt(0).toUpperCase() + nivel.slice(1) : 'Iniciante';
+
   const aulaAtualInfo = obterProximaAula(idioma, (aula_atual || 1) - 1);
   const progressoInfo = calcularProgressoNivel(aula_atual || 1, idioma);
 
@@ -319,7 +329,7 @@ export async function mostrarProgresso(client, user, usuarioBanco) {
 
 🎯 **Status Atual:**
 🌐 **Idioma:** ${idioma}
-📈 **Nível:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+📈 **Nível:** ${nivelFormatado}
 📊 **Progresso no Nível:** ${Math.round(progressoInfo.progresso)}%
 ⭐ **Pontuação Total:** ${pontuacao} pontos
 🔥 **Sequência Ativa:** ${streak_dias} dias consecutivos

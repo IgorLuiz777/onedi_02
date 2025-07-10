@@ -1,9 +1,139 @@
 import OpenAI from 'openai';
 import { gerarAudioProfessor } from './audioService.js';
+import { adicionarVocabulario } from './database.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Função para validar mensagem no modo teste
+async function validarMensagemTeste(mensagem, idioma) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um validador para teste de ${idioma}.
+
+          Analise se a resposta do usuário faz sentido ou é apenas caracteres aleatórios.
+
+          CRITÉRIOS PARA RESPOSTA VÁLIDA:
+          - Contém palavras reais em qualquer idioma
+          - Expressa uma ideia, mesmo que simples
+          - Pode ter erros (isso é normal no aprendizado)
+          - Tentativa genuína de responder
+
+          CRITÉRIOS PARA RESPOSTA INVÁLIDA:
+          - Apenas caracteres aleatórios
+          - Sequências sem sentido
+          - Spam de caracteres
+
+          Responda APENAS:
+          VÁLIDA - se faz sentido
+          INVÁLIDA - se é aleatório`
+        },
+        {
+          role: 'user',
+          content: `Resposta: "${mensagem}"`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 50
+    });
+
+    return completion.choices[0].message.content.trim() === 'VÁLIDA';
+
+  } catch (error) {
+    console.error('Erro ao validar mensagem teste:', error);
+    return true; // Em caso de erro, considera válida
+  }
+}
+
+// Função para corrigir e dar feedback
+async function corrigirResposta(resposta, idioma, perguntaContexto) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um professor especialista em ${idioma} dando feedback construtivo.
+
+          INSTRUÇÕES:
+          - Analise a resposta do usuário
+          - Identifique erros gramaticais, vocabulário ou estrutura
+          - Forneça correções específicas e didáticas
+          - Seja encorajador e positivo
+          - Explique o "porquê" das correções
+          - Use emojis para tornar amigável
+
+          FORMATO DA RESPOSTA:
+          ✅ **Pontos Positivos:** [o que está correto]
+
+          🔧 **Correções Sugeridas:**
+          • [erro específico] → [correção] (explicação)
+
+          💡 **Versão Melhorada:** [frase corrigida]
+
+          🎯 **Dica:** [dica específica para melhorar]`
+        },
+        {
+          role: 'user',
+          content: `Idioma: ${idioma}
+          Contexto da pergunta: ${perguntaContexto}
+          Resposta do usuário: "${resposta}"
+
+          Forneça feedback construtivo e correções.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    });
+
+    return completion.choices[0].message.content;
+
+  } catch (error) {
+    console.error('Erro ao corrigir resposta:', error);
+    return '✅ **Boa tentativa!** Continue praticando para melhorar ainda mais!';
+  }
+}
+
+// Função para extrair vocabulário da resposta
+async function extrairVocabularioTeste(resposta, usuarioId, idioma) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `Extraia 2-3 palavras importantes desta resposta em ${idioma} e forneça traduções em português.
+
+          Formato: palavra1:tradução1|palavra2:tradução2|palavra3:tradução3
+          Máximo 3 palavras.`
+        },
+        {
+          role: 'user',
+          content: resposta
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 100
+    });
+
+    const vocabularioExtraido = completion.choices[0].message.content;
+    const pares = vocabularioExtraido.split('|');
+
+    for (const par of pares) {
+      const [palavra, traducao] = par.split(':');
+      if (palavra && traducao && palavra.trim().length > 1) {
+        await adicionarVocabulario(usuarioId, palavra.trim(), traducao.trim(), idioma);
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao extrair vocabulário do teste:', error);
+  }
+}
 
 export class TestModeFlow {
   constructor(usuarioId, idioma, nome, genero) {
@@ -48,6 +178,32 @@ export class TestModeFlow {
   }
 
   async processarResposta(resposta, client, user) {
+    // Valida se a resposta faz sentido
+    const respostaValida = await validarMensagemTeste(resposta, this.idioma);
+
+    if (!respostaValida) {
+      const mensagemErro = `❌ **Resposta não compreendida**\n\n🧪 **Teste Personalizado:** Detectei que sua resposta pode conter apenas caracteres aleatórios.\n\n💡 **Por favor, responda com palavras reais em ${this.idioma} ou português.**\n\n📝 **Exemplo:** "I like music" ou "Eu gosto de música"\n\n🎯 **Tente novamente com uma resposta que faça sentido!**`;
+
+      await this.enviarRespostaComAudio(client, user, mensagemErro);
+      return {
+        pergunta: this.perguntaAtual,
+        nivel: this.nivelAtual,
+        interesses: this.interessesDetectados,
+        continuar: true,
+        respostaInvalida: true
+      };
+    }
+
+    // Gera correção e feedback da resposta
+    const ultimaPergunta = this.historico.length > 0 ?
+      this.historico[this.historico.length - 1]?.pergunta || 'pergunta anterior' :
+      'pergunta anterior';
+
+    const correcao = await corrigirResposta(resposta, this.idioma, ultimaPergunta);
+
+    // Extrai vocabulário da resposta
+    await extrairVocabularioTeste(resposta, this.usuarioId, this.idioma);
+
     // Detecta interesses na resposta
     await this.detectarInteresses(resposta);
 
@@ -70,13 +226,18 @@ export class TestModeFlow {
     // Gera próxima pergunta personalizada
     const proximaPergunta = await this.gerarProximaPergunta();
 
-    // Envia resposta com áudio automático
-    await this.enviarRespostaComAudio(client, user, proximaPergunta.feedback);
+    // Envia correção/feedback primeiro
+    await this.enviarRespostaComAudio(client, user, `📝 **Feedback da sua resposta:**\n\n${correcao}`);
+
+    // Depois envia feedback geral
+    setTimeout(async () => {
+      await this.enviarRespostaComAudio(client, user, proximaPergunta.feedback);
+    }, 3000);
 
     // Envia próxima pergunta
     setTimeout(async () => {
       await this.enviarRespostaComAudio(client, user, proximaPergunta.pergunta);
-    }, 2000);
+    }, 6000);
 
     return {
       pergunta: this.perguntaAtual,
@@ -272,6 +433,8 @@ export class TestModeFlow {
 
 🌐 **Acesse nosso site oficial:**
 👉 **https://onedi-lp.vercel.app/**
+
+💡 **Para personalizar seu plano, digite /personalizar**
 
 💡 **Obrigado por experimentar a ONEDI - onde a IA encontra a educação!**`;
 

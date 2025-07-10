@@ -6,6 +6,65 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Função para validar se a mensagem faz sentido
+async function validarMensagemSentido(mensagem, idioma) {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um validador de mensagens para aprendizado de ${idioma}.
+
+          Analise se a mensagem do usuário faz sentido ou é apenas caracteres aleatórios/palavras sem significado.
+
+          CRITÉRIOS PARA MENSAGEM VÁLIDA:
+          - Contém palavras reais em qualquer idioma
+          - Tem estrutura de frase, mesmo que simples
+          - Expressa uma ideia, mesmo que básica
+          - Pode ter erros gramaticais (isso é normal no aprendizado)
+
+          CRITÉRIOS PARA MENSAGEM INVÁLIDA:
+          - Apenas caracteres aleatórios (ex: "fksadklfdjjkl", "asdasd", "123456")
+          - Sequências sem sentido
+          - Apenas símbolos ou números
+          - Spam de caracteres
+
+          Responda APENAS com:
+          VÁLIDA - se a mensagem faz sentido
+          INVÁLIDA - se é apenas caracteres aleatórios
+
+          Se INVÁLIDA, adicione após uma quebra de linha uma sugestão de correção em português.`
+        },
+        {
+          role: 'user',
+          content: `Mensagem para validar: "${mensagem}"`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 150
+    });
+
+    const resposta = completion.choices[0].message.content.trim();
+
+    if (resposta.startsWith('INVÁLIDA')) {
+      const partes = resposta.split('\n');
+      const sugestao = partes.length > 1 ? partes[1] : 'Tente escrever uma frase com palavras reais.';
+      return {
+        valida: false,
+        sugestao: sugestao
+      };
+    }
+
+    return { valida: true };
+
+  } catch (error) {
+    console.error('Erro ao validar mensagem:', error);
+    // Em caso de erro, considera válida para não bloquear o fluxo
+    return { valida: true };
+  }
+}
+
 const promptsModos = {
   aula_guiada: {
     system: (professor, idioma, nome, nivel, aulaAtual, historicoAulas, etapaAula) => `
@@ -206,6 +265,18 @@ const promptsModos = {
 export async function processarModoEstudo(estado, mensagem, usuarioBanco) {
   const { modo, idioma, professor, nome } = estado;
   const nivel = usuarioBanco?.nivel || 'iniciante';
+
+  // Valida se a mensagem faz sentido
+  const validacao = await validarMensagemSentido(mensagem, idioma);
+
+  if (!validacao.valida) {
+    return {
+      resposta: `❌ **Mensagem não compreendida**\n\n🤖 **Detectei que sua mensagem pode conter apenas caracteres aleatórios ou não formar palavras reais.**\n\n💡 **Sugestão:** ${validacao.sugestao}\n\n📝 **Exemplo de mensagem válida:**\n• "Hello, how are you?" (${idioma})\n• "Olá, como você está?" (Português)\n• "I want to learn about..." (${idioma})\n\n🎯 **Tente novamente com uma frase que faça sentido!**`,
+      incluirTraducao: false,
+      incluirAudio: false,
+      mensagemInvalida: true
+    };
+  }
 
   // Otimização: usar thread_id para manter contexto e economizar tokens
   if (modo === 'aula_guiada') {

@@ -210,6 +210,31 @@ wppconnect
             if (statusPlano.status_plano !== 'ativo') {
               console.log(`🧪 Usuário em modo de teste detectado: ${numeroLimpo}`);
 
+              // Verifica se já concluiu o teste personalizado
+              if (usuarioBanco.teste_personalizado_concluido) {
+                console.log(`✅ Usuário já concluiu o teste personalizado: ${numeroLimpo}`);
+                await client.sendText(user, `🎉 **Parabéns! Teste Concluído!**
+
+🏆 **Você já completou seu Teste Personalizado da ONEDI!**
+
+📊 **Seus Resultados:**
+• ✅ **${usuarioBanco.perguntas_teste_respondidas || 10} perguntas** respondidas
+• 🎯 **Interesses detectados:** ${usuarioBanco.interesses_detectados?.join(', ') || 'diversos temas'}
+• 📈 **Nível final:** ${usuarioBanco.nivel_teste_final || 'intermediário'}
+
+🚀 **Continue sua Jornada com a ONEDI!**
+💎 **Planos Personalizados Disponíveis!**
+
+🌐 **Acesse nosso site oficial:**
+👉 **https://onedi-lp.vercel.app/**
+
+💡 **Para personalizar seu plano, digite /personalizar**
+
+💡 **Comandos úteis:** /menu | /personalizar | /status`);
+                await client.stopTyping(user);
+                return;
+              }
+
               // Verifica se já tem sessão de teste ativa
               let sessaoTeste = obterSessaoTeste(usuarioBanco.id);
 
@@ -254,9 +279,57 @@ wppconnect
         // NOVO: Verifica se há sessão de teste ativa
         const sessaoTeste = obterSessaoTeste(usuarioBanco?.id);
         if (sessaoTeste && usuarioBanco && usuarioBanco.status_plano !== 'ativo') {
-          console.log(`🧪 Processando resposta do teste personalizado`);
+          // Verifica se o usuário já concluiu o teste
+          if (usuarioBanco.teste_personalizado_concluido) {
+            await client.sendText(user, `🎉 **Parabéns! Teste Concluído!**
 
+🏆 **Você já completou seu Teste Personalizado da ONEDI!**
+
+🚀 **Continue sua jornada com nossos planos personalizados!**
+💎 Digite **/personalizar** para ver as opções.
+
+💡 **Comandos úteis:** /menu | /personalizar | /status`);
+            await client.stopTyping(user);
+            return;
+          }
+
+          console.log(`🎤 Processando áudio no teste personalizado`);
+
+          const resultadoTranscricao = await processarAudioAluno(
+            audioBuffer,
+            sessaoTeste.idioma,
+            message.mimetype || 'audio/wav'
+          );
+
+          console.log(`📝 Transcrição do teste: "${resultadoTranscricao.texto}"`);
+
+          await client.sendText(user, `🎤 **Áudio recebido e transcrito!**\n\n📝 **Você disse:** "${resultadoTranscricao.texto}"\n\n🧪 **Processando sua resposta no teste personalizado...**`);
+
+          // Processa a transcrição como resposta do teste
+          const resultado = await sessaoTeste.processarResposta(resultadoTranscricao.texto, client, user);
+
+          if (resultado.testeConcluido) {
+            // Salva dados do teste no banco
+            await salvarDadosTeste(usuarioBanco.id, {
+              interessesDetectados: resultado.interessesDetectados,
+              perguntasRespondidas: resultado.perguntasRespondidas,
+              nivelFinal: resultado.nivelFinal
+            });
+
+            // Remove sessão de teste
+            finalizarSessaoTeste(usuarioBanco.id);
+
+            console.log(`✅ Teste personalizado concluído para usuário ${usuarioBanco.id}`);
+          }
+
+          return;
           const resultado = await sessaoTeste.processarResposta(message.body, client, user);
+
+          // Se a resposta foi inválida, não continua
+          if (resultado.respostaInvalida) {
+            await client.stopTyping(user);
+            return;
+          }
 
           if (resultado.testeConcluido) {
             // Salva dados do teste no banco
@@ -302,7 +375,19 @@ wppconnect
           if (resultado && resultado.idiomaSelecionado) {
             estado.idioma = resultado.idiomaSelecionado;
             estado.etapa = 3;
-            await mostrarMenuPrincipal(client, user, estado);
+
+            // Verifica se já concluiu o teste antes de mostrar o menu
+            if (usuarioBanco.teste_personalizado_concluido) {
+              await mostrarMenuPrincipal(client, user, estado);
+            } else {
+              // Se não concluiu o teste, inicia automaticamente
+              const sessaoTeste = iniciarTesteModo(usuarioBanco.id, resultado.idiomaSelecionado, estado.nome, estado.genero);
+              const resultadoInicial = await sessaoTeste.iniciarTeste();
+
+              setTimeout(async () => {
+                await client.sendText(user, resultadoInicial.mensagem);
+              }, 2000);
+            }
           }
           await client.stopTyping(user);
           return;
@@ -463,6 +548,19 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       // NOVO: Verifica se há sessão de teste ativa
       const sessaoTeste = obterSessaoTeste(usuarioBanco.id);
       if (sessaoTeste && usuarioBanco.status_plano !== 'ativo') {
+        // Verifica se o usuário já concluiu o teste
+        if (usuarioBanco.teste_personalizado_concluido) {
+          await client.sendText(user, `🎉 **Parabéns! Teste Concluído!**
+
+🏆 **Você já completou seu Teste Personalizado da ONEDI!**
+
+🚀 **Continue sua jornada com nossos planos personalizados!**
+💎 Digite **/personalizar** para ver as opções.
+
+💡 **Comandos úteis:** /menu | /personalizar | /status`);
+          return;
+        }
+
         if (comando === 'menu_principal') {
           await client.sendText(user, `🧪 **Teste Personalizado em Andamento**\n\n📊 **Progresso:** ${sessaoTeste.getProgresso().perguntaAtual}/10 perguntas\n\n💡 **Para acessar o menu principal, complete primeiro seu teste personalizado!**\n\nResponda à pergunta anterior para continuar.`);
           return;
@@ -680,6 +778,13 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         console.log(`🎓 Processando estudo: ${message.body}`);
         const resultado = await processarModoEstudo(estado, message.body, usuarioBanco);
 
+        // Se a mensagem foi inválida, não continua o fluxo normal
+        if (resultado.mensagemInvalida) {
+          await client.sendText(user, resultado.resposta);
+          await client.stopTyping(user);
+          return;
+        }
+
         lastResponses[user] = resultado.resposta;
         console.log(`💾 Salvando resposta para tradução/áudio: ${resultado.resposta.substring(0, 50)}...`);
 
@@ -714,8 +819,11 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
             }
           } catch (imgError) {
             console.error('Erro ao enviar imagem:', imgError);
-            await client.sendText(user, '🖼️ Não foi possível enviar a imagem, mas vamos continuar com a aula!');
-          }
+        // Só mostra opções se a mensagem foi válida
+        if (!resultado.mensagemInvalida) {
+          await enviarOpcoesMensagem(client, user, estados[user].idioma, estados[user]?.modo === 'aula_guiada');
+          await enviarLembreteRecursos(client, user, contadorMensagens[user]);
+        }
         }
 
         if (resultado.audioSolicitado) {
@@ -736,7 +844,6 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           await enviarOpcoesMensagem(client, user, estado.idioma, estado.modo === 'aula_guiada');
         }
 
-        await enviarLembreteRecursos(client, user, contadorMensagens[user]);
 
         if (estado.modo === 'aula_guiada' && resultado.aulaAtual) {
           await salvarHistoricoAula(

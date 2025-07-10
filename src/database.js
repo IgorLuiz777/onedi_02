@@ -52,7 +52,7 @@ export async function salvarUsuario(telefone, dados) {
 
 export async function consultarUsuario(telefone) {
   let result = await pool.query(
-    'SELECT * FROM usuarios WHERE telefone = $1',
+    'SELECT *, COALESCE(teste_personalizado_concluido, false) as teste_personalizado_concluido FROM usuarios WHERE telefone = $1',
     [telefone]
   );
   if (result.rows.length > 0) return result.rows[0];
@@ -60,7 +60,7 @@ export async function consultarUsuario(telefone) {
   if (telefone.endsWith('@c.us')) {
     const telefoneSemSufixo = telefone.replace(/@c\.us$/, '');
     result = await pool.query(
-      'SELECT * FROM usuarios WHERE telefone = $1',
+      'SELECT *, COALESCE(teste_personalizado_concluido, false) as teste_personalizado_concluido FROM usuarios WHERE telefone = $1',
       [telefoneSemSufixo]
     );
     if (result.rows.length > 0) return result.rows[0];
@@ -69,7 +69,7 @@ export async function consultarUsuario(telefone) {
   if (!telefone.endsWith('@c.us')) {
     const telefoneComSufixo = telefone + '@c.us';
     result = await pool.query(
-      'SELECT * FROM usuarios WHERE telefone = $1',
+      'SELECT *, COALESCE(teste_personalizado_concluido, false) as teste_personalizado_concluido FROM usuarios WHERE telefone = $1',
       [telefoneComSufixo]
     );
     if (result.rows.length > 0) return result.rows[0];
