@@ -130,9 +130,9 @@ export async function mostrarSelecaoIdioma(client, user, usuarioBanco) {
 
     const descricoes = {
       'Inglês': 'O idioma mais falado no mundo',
-      'Espanhol': 'Segundo idioma mais falado',
+      'Espanhol': 'O idioma oficial de 20 países',
       'Francês': 'A língua do amor e da cultura',
-      'Mandarim': 'O idioma do futuro'
+      'Mandarim': 'Segundo idioma mais falado'
     };
 
     return {
@@ -684,7 +684,7 @@ export function validarIdioma(idiomaInput) {
     '🇺🇸 inglês o idioma mais falado no mundo': 'Inglês',
     'espanhol': 'Espanhol',
     '🇪🇸 espanhol': 'Espanhol',
-    '🇪🇸 espanhol segundo idioma mais falado': 'Espanhol',
+    '🇪🇸 espanhol idioma oficial de 20 países': 'Espanhol',
     'frances': 'Francês',
     'francês': 'Francês',
     '🇫🇷 frances': 'Francês',
@@ -693,7 +693,7 @@ export function validarIdioma(idiomaInput) {
     '🇫🇷 francês a lingua do amor e da cultura': 'Francês',
     'mandarim': 'Mandarim',
     '🇨🇳 mandarim': 'Mandarim',
-    '🇨🇳 mandarim o idioma do futuro': 'Mandarim'
+    '🇨🇳 mandarim segundo idioma mais falado': 'Mandarim'
   };
 
   let idiomaNormalizado = normalizarTexto(idiomaInput.replace(/\n/g, ' ').replace(/ +/g, ' '));
@@ -884,9 +884,9 @@ export async function mostrarPersonalizarPlano(client, user) {
 
 🌐 **Escolha de 1 a 4 idiomas:**
 • 🇺🇸 **Inglês** - O idioma mais falado no mundo
-• 🇪🇸 **Espanhol** - Segundo idioma mais falado
+• 🇪🇸 **Espanhol** - O idioma oficial de 20 países
 • 🇫🇷 **Francês** - A língua do amor e da cultura
-• 🇨🇳 **Mandarim** - O idioma do futuro
+• 🇨🇳 **Mandarim** - Segundo idioma mais falado
 
 💰 **Preços por Quantidade:**
 • **1 Idioma** - R$ 29,90/mês

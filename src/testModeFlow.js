@@ -177,7 +177,8 @@ export class TestModeFlow {
 
   🚀 **Vamos começar sua jornada personalizada!**
 
-  💡 **Dica:** Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!`;
+  💡 **Dica:** Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!
+      *Vamos começar?*`;
 
     return {
       mensagem: mensagemInicial,
@@ -454,7 +455,6 @@ export class TestModeFlow {
 
 📊 **Resumo da sua Experiência:**
 • ✅ **10 perguntas** respondidas com sucesso
-• 🎯 **Interesses detectados:** ${interessesResumo}
 • 📈 **Progressão:** Básico → Intermediário → Avançado
 • 🤖 **IA Adaptativa:** Perguntas personalizadas em tempo real
 • 🔊 **Áudio HD:** Text-to-speech de alta qualidade
@@ -464,7 +464,7 @@ export class TestModeFlow {
 💎 **Planos Personalizados Disponíveis!**
 
 🌐 **Acesse nosso site oficial:**
-👉 **https://onedi-lp.vercel.app/**
+👉 https://onedi-lp.vercel.app/
 
 💡 **Para personalizar seu plano, digite /personalizar**
 

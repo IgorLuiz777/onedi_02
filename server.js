@@ -219,14 +219,13 @@ wppconnect
 
 📊 **Seus Resultados:**
 • ✅ **${usuarioBanco.perguntas_teste_respondidas || 10} perguntas** respondidas
-• 🎯 **Interesses detectados:** ${usuarioBanco.interesses_detectados?.join(', ') || 'diversos temas'}
 • 📈 **Nível final:** ${usuarioBanco.nivel_teste_final || 'intermediário'}
 
 🚀 **Continue sua Jornada com a ONEDI!**
 💎 **Planos Personalizados Disponíveis!**
 
 🌐 **Acesse nosso site oficial:**
-👉 **https://onedi-lp.vercel.app/**
+👉 https://onedi-lp.vercel.app/
 
 💡 **Para personalizar seu plano, digite /personalizar**
 
@@ -685,13 +684,13 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
         description: 'Qual idioma você deseja experimentar? Escolha um para sua experiência personalizada! 🎁',
         sections: [
           {
-            title: 'Idiomas Disponíveis',
-            rows: [
-              { rowId: 'ingles', title: '🇺🇸 Inglês', description: 'O idioma mais falado no mundo' },
-              { rowId: 'espanhol', title: '🇪🇸 Espanhol', description: 'Segundo idioma mais falado' },
-              { rowId: 'frances', title: '🇫🇷 Francês', description: 'A língua do amor e da cultura' },
-              { rowId: 'mandarim', title: '🇨🇳 Mandarim', description: 'O idioma do futuro' }
-            ]
+        title: 'Idiomas Disponíveis',
+        rows: [
+          { rowId: 'ingles', title: '🇺🇸 Inglês', description: 'O idioma mais falado no mundo' },
+          { rowId: 'espanhol', title: '🇪🇸 Espanhol', description: 'O idioma oficial de 20 países' },
+          { rowId: 'frances', title: '🇫🇷 Francês', description: 'A língua do amor e da cultura' },
+          { rowId: 'mandarim', title: '🇨🇳 Mandarim', description: 'Segundo idioma mais falado' }
+        ]
           }
         ]
       });
