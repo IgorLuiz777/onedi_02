@@ -321,9 +321,6 @@ wppconnect
             console.log(`✅ Teste personalizado concluído para usuário ${usuarioBanco.id}`);
           }
 
-          return;
-          const resultado = await sessaoTeste.processarResposta(message.body, client, user);
-
           // Se a resposta foi inválida, não continua
           if (resultado.respostaInvalida) {
             await client.stopTyping(user);
