@@ -4,7 +4,6 @@ import { obterProximaAula, calcularProgressoNivel } from './lessonProgression.js
 import { salvarHistoricoAula, atualizarAulaAtual, verificarStatusPlano, verificarAcessoIdioma, definirIdiomaTestе, salvarUsuario } from './database.js';
 import OpenAI from 'openai';
 import { mp3ToBase64 } from './mp3ToBase64.js';
-import { atualizarAulaAtual } from './database.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
