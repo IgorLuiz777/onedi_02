@@ -845,11 +845,13 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
             }
           } catch (imgError) {
             console.error('Erro ao enviar imagem:', imgError);
+          }
+        }
+
         // Só mostra opções se a mensagem foi válida
         if (!resultado.mensagemInvalida) {
           await enviarOpcoesMensagem(client, user, estados[user].idioma, estados[user]?.modo === 'aula_guiada');
           await enviarLembreteRecursos(client, user, contadorMensagens[user]);
-        }
         }
 
         if (resultado.audioSolicitado) {
