@@ -292,20 +292,10 @@ wppconnect
             return;
           }
 
-          console.log(`🎤 Processando áudio no teste personalizado`);
+          console.log(`🧪 Processando resposta no teste personalizado: "${message.body}"`);
 
-          const resultadoTranscricao = await processarAudioAluno(
-            audioBuffer,
-            sessaoTeste.idioma,
-            message.mimetype || 'audio/wav'
-          );
-
-          console.log(`📝 Transcrição do teste: "${resultadoTranscricao.texto}"`);
-
-          await client.sendText(user, `🎤 **Áudio recebido e transcrito!**\n\n📝 **Você disse:** "${resultadoTranscricao.texto}"\n\n🧪 **Processando sua resposta no teste personalizado...**`);
-
-          // Processa a transcrição como resposta do teste
-          const resultado = await sessaoTeste.processarResposta(resultadoTranscricao.texto, client, user);
+          // Processa a resposta de texto diretamente
+          const resultado = await sessaoTeste.processarResposta(message.body, client, user);
 
           if (resultado.testeConcluido) {
             // Salva dados do teste no banco
@@ -407,9 +397,8 @@ wppconnect
               sessaoTeste.setNivelInicial(resultado.nivelSelecionado); // Ajusta nível inicial do teste
               const resultadoInicial = await sessaoTeste.iniciarTeste();
 
-              setTimeout(async () => {
-                await client.sendText(user, resultadoInicial.mensagem);
-              }, 2000);
+              // Remove o setTimeout para evitar mensagem duplicada
+              await client.sendText(user, resultadoInicial.mensagem);
             } else {
               // Usuário já concluiu teste, mostra menu principal
               await mostrarMenuPrincipal(client, user, estado);
@@ -450,7 +439,39 @@ wppconnect
           // NOVO: Verifica se há sessão de teste ativa
           const sessaoTeste = obterSessaoTeste(usuarioBanco.id);
           if (sessaoTeste && usuarioBanco.status_plano !== 'ativo') {
-            await client.sendText(user, '🎤 **Áudio recebido!**\n\n🧪 **Modo Teste Personalizado:** Por favor, responda por texto para uma melhor experiência personalizada.\n\n💡 **Dica:** Digite sua resposta para continuar o teste!');
+            // Processa áudio no modo teste
+            console.log('🎤 Processando áudio no teste personalizado');
+
+            await client.sendText(user, '🔄 Analisando seu áudio... Um momento!');
+
+            const mediaData = await client.downloadMedia(message);
+            const audioBuffer = Buffer.from(mediaData.split(';base64,').pop(), 'base64');
+
+            const resultadoTranscricao = await processarAudioAluno(
+              audioBuffer,
+              usuarioBanco.idioma || 'Inglês',
+              message.mimetype || 'audio/wav'
+            );
+
+            console.log(`📝 Transcrição no teste: "${resultadoTranscricao.texto}"`);
+
+            // Processa a transcrição como resposta do teste
+            const resultado = await sessaoTeste.processarResposta(resultadoTranscricao.texto, client, user);
+
+            if (resultado.testeConcluido) {
+              // Salva dados do teste no banco
+              await salvarDadosTeste(usuarioBanco.id, {
+                interessesDetectados: resultado.interessesDetectados,
+                perguntasRespondidas: resultado.perguntasRespondidas,
+                nivelFinal: resultado.nivelFinal
+              });
+
+              // Remove sessão de teste
+              finalizarSessaoTeste(usuarioBanco.id);
+
+              console.log(`✅ Teste personalizado concluído para usuário ${usuarioBanco.id}`);
+            }
+
             return;
           }
 
@@ -506,9 +527,8 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           delete aguardandoAudio[user];
 
           if (estados[user]?.modo === 'aula_guiada') {
-            setTimeout(async () => {
-              await client.sendText(user, '📚 Vamos continuar com a aula! Envie qualquer mensagem para prosseguir.\n\n💡 **Comandos úteis:** /menu | /idioma');
-            }, 2000);
+            // Remove o setTimeout para evitar mensagem duplicada
+            await client.sendText(user, resultadoInicial.mensagem);
           }
         } else {
           console.log('🎤 Processando áudio como mensagem de texto...');
@@ -729,14 +749,45 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
       const primeiraAula = obterProximaAula(idioma, 0);
       await salvarHistoricoAula(usuarioSalvo.id, primeiraAula.id, primeiraAula.topico, primeiraAula.conteudo, primeiraAula.nivel);
 
-      await client.sendText(user, `🎉 Excelente! Você escolheu experimentar ${idioma}.\n\n🎁 **Sua experiência personalizada começou agora!**\n\n🚀 Vamos começar com perguntas personalizadas baseadas nos seus interesses!\n\n💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
+      await client.sendText(user, `
+    🎉 *Bem-vindo ao Teste Gratuito Personalizado da ONEDI, Oi!*
+
+    🤖 *Sua Experiência Exclusiva de Idiomas*
+
+    🎯 *Nível Selecionado:* Básico
+
+    🎯 *Como funciona:*
+    • Vou fazer perguntas adaptadas ao seu nível em ${idioma}
+    • Cada pergunta será personalizada com base nos seus interesses
+    • A dificuldade será ajustada conforme seu nível selecionado
+    • Vou detectar automaticamente seus temas favoritos
+
+    ✨ *Recursos que você vai experimentar:*
+    🔊 *Áudio HD* - Cada resposta minha virá com áudio automático
+    🧠 *IA Adaptativa* - Perguntas personalizadas em tempo real
+    📈 *Progressão Inteligente* - Dificuldade ajustada ao seu desempenho
+    🎤 *Speech-to-Text* - Pode responder por áudio também!
+
+    🚀 *Vamos começar sua jornada personalizada!*
+
+    💡 *Dica:* Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!
+    `);
 
       // NOVO: Inicia teste personalizado automaticamente
       const sessaoTeste = iniciarTesteModo(usuarioSalvo.id, idioma, estado.nome, estado.genero);
-      const resultadoInicial = await sessaoTeste.iniciarTeste();
 
+      // Inicia o teste e vai direto para a primeira pergunta
+      await client.sendText(user, `🧪 **Iniciando seu Teste Personalizado!**\n\n🎯 **Preparando primeira pergunta personalizada...**`);
+
+      // Gera a primeira pergunta automaticamente
       setTimeout(async () => {
-        await client.sendText(user, resultadoInicial.mensagem);
+        try {
+          const proximaPergunta = await sessaoTeste.gerarProximaPergunta();
+          await sessaoTeste.enviarRespostaComAudio(client, user, proximaPergunta.pergunta);
+        } catch (error) {
+          console.error('Erro ao gerar primeira pergunta:', error);
+          await client.sendText(user, 'Erro ao iniciar o teste. Tente novamente.');
+        }
       }, 2000);
 
       estado.etapa = 3;

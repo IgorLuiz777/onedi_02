@@ -157,34 +157,11 @@ export class TestModeFlow {
   }
 
   async iniciarTeste() {
-    const mensagemInicial = `🎉 **Bem-vindo ao Teste Gratuito Personalizado da ONEDI, ${this.nome}!**
+    // Incrementa para ir direto para a primeira pergunta
+    this.perguntaAtual = 1;
 
-  🤖 **Sua Experiência Exclusiva de Idiomas**
-
-  🎯 **Nível Selecionado:** ${this.nivelInicial.charAt(0).toUpperCase() + this.nivelInicial.slice(1)}
-
-  🎯 **Como funciona:**
-  • Vou fazer perguntas adaptadas ao seu nível em ${this.idioma}
-  • Cada pergunta será personalizada com base nos seus interesses
-  • A dificuldade será ajustada conforme seu nível selecionado
-  • Vou detectar automaticamente seus temas favoritos
-
-  ✨ **Recursos que você vai experimentar:**
-  🔊 **Áudio HD** - Cada resposta minha virá com áudio automático
-  🧠 **IA Adaptativa** - Perguntas personalizadas em tempo real
-  📈 **Progressão Inteligente** - Dificuldade ajustada ao seu desempenho
-  🎤 **Speech-to-Text** - Pode responder por áudio também!
-
-  🚀 **Vamos começar sua jornada personalizada!**
-
-  💡 **Dica:** Responda naturalmente - vou adaptar as próximas perguntas aos seus interesses!
-      *Vamos começar?*`;
-
-    return {
-      mensagem: mensagemInicial,
-      pergunta: 1,
-      nivel: 'básico'
-    };
+    // Gera a primeira pergunta automaticamente
+    return await this.gerarProximaPergunta();
   }
 
   async processarResposta(resposta, client, user) {
@@ -192,7 +169,7 @@ export class TestModeFlow {
     const respostaValida = await validarMensagemTeste(resposta, this.idioma);
 
     if (!respostaValida) {
-      const mensagemErro = `❌ **Resposta não compreendida**\n\n🧪 **Teste Personalizado:** Detectei que sua resposta pode conter apenas caracteres aleatórios.\n\n💡 **Por favor, responda com palavras reais em ${this.idioma} ou português.**\n\n📝 **Exemplo:** "I like music" ou "Eu gosto de música"\n\n🎯 **Tente novamente com uma resposta que faça sentido!**`;
+      const mensagemErro = `❌ **Resposta não compreendida**\n\n🧪 **Teste Personalizado:** Detectei que sua resposta pode conter apenas caracteres aleatórios.\n\n💡 **Por favor, responda com palavras reais em ${this.idioma} ou português.**\n\n📝\n\n🎯 **Tente novamente com uma resposta que faça sentido!**`;
 
       await this.enviarRespostaComAudio(client, user, mensagemErro);
       return {
@@ -236,18 +213,13 @@ export class TestModeFlow {
     // Gera próxima pergunta personalizada
     const proximaPergunta = await this.gerarProximaPergunta();
 
-    // Envia correção/feedback primeiro
-    await this.enviarRespostaComAudio(client, user, `📝 **Feedback da sua resposta:**\n\n${correcao}`);
+    // Envia correção/feedback primeiro (SEM áudio)
+    await client.sendText(user, `📝 **Feedback da sua resposta:**\n\n${correcao}`);
 
-    // Depois envia feedback geral
-    setTimeout(async () => {
-      await this.enviarRespostaComAudio(client, user, proximaPergunta.feedback);
-    }, 3000);
-
-    // Envia próxima pergunta
+    // Envia próxima pergunta (COM áudio)
     setTimeout(async () => {
       await this.enviarRespostaComAudio(client, user, proximaPergunta.pergunta);
-    }, 6000);
+    }, 2000);
 
     return {
       pergunta: this.perguntaAtual,
@@ -357,8 +329,7 @@ export class TestModeFlow {
             - Idioma: ${this.idioma}
 
             INSTRUÇÕES:
-            1. Gere um FEEDBACK positivo e encorajador sobre a resposta anterior (se não for a primeira pergunta)
-            2. Crie uma PERGUNTA personalizada baseada nos interesses detectados
+            1. Crie uma PERGUNTA personalizada baseada nos interesses detectados
             3. A pergunta deve ser apropriada para o nível atual (${this.nivelAtual})
             4. Use vocabulário e estruturas adequadas ao nível
             5. Torne a pergunta interessante e relevante aos interesses do usuário
@@ -370,8 +341,6 @@ export class TestModeFlow {
             - Avançado: Discussões abstratas, subjuntivo, argumentação
 
             FORMATO DA RESPOSTA:
-            FEEDBACK: [feedback positivo sobre resposta anterior - apenas se não for pergunta 1]
-
             PERGUNTA: [pergunta personalizada em ${this.idioma}]
 
             TRADUÇÃO: [tradução da pergunta em português]
@@ -401,20 +370,13 @@ export class TestModeFlow {
         this.threadId = completion.thread_id;
       }
 
-      // Separa feedback e pergunta
-      const partes = resposta.split('PERGUNTA:');
-      const feedback = partes[0].replace('FEEDBACK:', '').trim();
-      const perguntaCompleta = partes[1] || resposta;
-
       return {
-        feedback: feedback || `✅ **Excelente resposta!** Vamos continuar...`,
-        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\n${perguntaCompleta.trim()}`
+        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\n${resposta.trim()}`
       };
 
     } catch (error) {
       console.error('Erro ao gerar pergunta:', error);
       return {
-        feedback: '✅ Ótima resposta! Vamos continuar...',
         pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\nConte-me sobre seus hobbies favoritos em ${this.idioma}.`
       };
     }
