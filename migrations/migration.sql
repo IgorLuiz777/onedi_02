@@ -107,3 +107,17 @@ BEGIN
     ALTER TABLE usuarios ADD COLUMN teste_personalizado_concluido BOOLEAN DEFAULT FALSE;
   END IF;
 END $$;
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS idioma_teste VARCHAR(50);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS interesses_detectados TEXT[];
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS perguntas_teste_respondidas INTEGER DEFAULT 0;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nivel_teste_final VARCHAR(20);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS teste_personalizado_concluido BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS plano_id INTEGER;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS status_plano VARCHAR(30) DEFAULT 'teste_gratuito';
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS idiomas_disponiveis TEXT[];
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS limite_teste_minutos INTEGER DEFAULT 30;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tempo_teste_usado INTEGER DEFAULT 0;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS data_inicio_plano TIMESTAMP;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS data_fim_plano TIMESTAMP;
