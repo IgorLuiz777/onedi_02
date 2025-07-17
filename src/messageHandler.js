@@ -259,7 +259,25 @@ export async function mostrarSelecaoNivel(client, user, usuarioBanco, idioma) {
 }
 
 export async function processarSelecaoNivel(client, user, usuarioBanco, message, idioma) {
-  const nivelInput = message.selectedRowId || message.body.trim().toLowerCase();
+
+
+  // Log detalhado para debug
+  console.log('[DEBUG] processarSelecaoNivel - message:', JSON.stringify(message));
+
+  // Extrai o nível de forma robusta, cobrindo todas as possibilidades
+  let nivelInput = message.selectedRowId
+    || (message.listResponse && message.listResponse.singleSelectReply && message.listResponse.singleSelectReply.selectedRowId)
+    || null;
+
+  if (!nivelInput) {
+    // Remove emojis e espaços extras do body
+    nivelInput = message.body
+      .replace(/[\u{1F300}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '') // remove emojis
+      .replace(/[^a-zA-ZáéíóúãõâêîôûçÁÉÍÓÚÃÕÂÊÎÔÛÇ ]/g, '') // remove caracteres especiais
+      .replace(/ +/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
   const nivel = validarNivel(nivelInput);
 
   if (!nivel) {
@@ -334,8 +352,9 @@ export async function mostrarMenuPrincipal(client, user, estado) {
 🎓 **Bem-vindo de volta à ONEDI - sua escola de idiomas com IA!**
 
 📚 **Idioma atual:** ${estado.idioma}
-🎯 **Seu nível atual:** ${nivelFormatado}
 📚 Digite *"/idioma"* para muda-lo
+🎯 **Seu nível atual:** ${nivelFormatado}
+🎯 Digite *"/nivel"* para muda-lo
 
 🚀 **O que você gostaria de fazer hoje?**
 

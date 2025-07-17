@@ -34,7 +34,8 @@ import {
   enviarLembreteRecursos,
   receberUsuarioComCompra,
   detectarMensagemCompra,
-  mostrarSelecaoNivel
+  mostrarSelecaoNivel,
+  processarSelecaoNivel
 } from './src/messageHandler.js';
 import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
 import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
@@ -452,22 +453,7 @@ wppconnect
         }
 
         if (estado.etapa === 3) {
-          // Primeiro, verifica se é seleção de nível
-          const nivelInput = message.selectedRowId || message.body.trim().toLowerCase();
-          const nivel = validarNivel ? validarNivel(nivelInput) : null;
-          if (nivel) {
-            // É uma seleção de nível
-            const resultado = await processarSelecaoNivel(client, user, usuarioBanco, message, estado.idioma);
-            if (resultado && resultado.nivelSelecionado) {
-              estado.nivel = resultado.nivelSelecionado;
-              estado.aula_atual = resultado.aulaInicial;
-              estado.etapa = 3; // Vai para seleção de modo de estudo
-              await mostrarMenuPrincipal(client, user, estado);
-            }
-            await client.stopTyping(user);
-            return;
-          }
-          // Se não for nível, verifica se é idioma
+          // No etapa 3, só processa seleção de idioma ou modo de estudo
           const idiomaInput = message.selectedRowId || message.body.trim();
           const idioma = validarIdioma ? validarIdioma(idiomaInput) : null;
           if (idioma) {
@@ -480,7 +466,7 @@ wppconnect
             await client.stopTyping(user);
             return;
           }
-          // Se não for nível nem idioma, processa como modo de estudo
+          // Se não for idioma, processa como modo de estudo
           await processarSelecaoModoEstudo(client, user, estado, message);
           await client.stopTyping(user);
           return;
@@ -738,6 +724,8 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           await client.sendText(user, revisao.mensagem);
           break;
         case 'verificar_nivel':
+          // Força etapa de seleção de nível
+          estados[user].etapa = 2.7;
           await mostrarSelecaoNivel(client, user, usuarioBanco, usuarioBanco.idioma);
           break;
         case 'ver_streak':
