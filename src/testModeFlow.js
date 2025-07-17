@@ -148,6 +148,8 @@ export class TestModeFlow {
     this.nivelInicial = 'básico'; // Nível definido pelo usuário
     this.historico = [];
     this.threadId = null;
+    this.perguntasFeitas = new Set(); // Para evitar repetições
+    this.topicosAbordados = new Set(); // Para diversificar tópicos
   }
 
   setNivelInicial(nivel) {
@@ -314,6 +316,33 @@ export class TestModeFlow {
       ? this.interessesDetectados.join(', ')
       : 'temas gerais';
 
+    // Lista de tópicos diversos para evitar repetição
+    const topicosDiversos = [
+      'hobbies e tempo livre',
+      'trabalho e carreira',
+      'família e relacionamentos',
+      'viagens e lugares',
+      'comida e culinária',
+      'tecnologia e internet',
+      'esportes e exercícios',
+      'música e entretenimento',
+      'estudos e educação',
+      'saúde e bem-estar',
+      'natureza e meio ambiente',
+      'arte e cultura',
+      'rotina diária',
+      'planos futuros',
+      'experiências passadas'
+    ];
+
+    // Seleciona um tópico que ainda não foi usado
+    const topicosDisponiveis = topicosDiversos.filter(topico => !this.topicosAbordados.has(topico));
+    const topicoEscolhido = topicosDisponiveis.length > 0
+      ? topicosDisponiveis[Math.floor(Math.random() * topicosDisponiveis.length)]
+      : topicosDiversos[Math.floor(Math.random() * topicosDiversos.length)];
+
+    this.topicosAbordados.add(topicoEscolhido);
+
     try {
       const completion = await openai.chat.completions.create({
         model: 'gpt-4',
@@ -327,12 +356,15 @@ export class TestModeFlow {
             - Nível atual: ${this.nivelAtual}
             - Interesses detectados: ${interessesTexto}
             - Idioma: ${this.idioma}
+            - Tópico para esta pergunta: ${topicoEscolhido}
 
-            INSTRUÇÕES:
-            1. Crie uma PERGUNTA personalizada baseada nos interesses detectados
+            INSTRUÇÕES IMPORTANTES:
+            1. Crie uma PERGUNTA ÚNICA sobre "${topicoEscolhido}"
+            2. NUNCA repita perguntas já feitas anteriormente
             3. A pergunta deve ser apropriada para o nível atual (${this.nivelAtual})
             4. Use vocabulário e estruturas adequadas ao nível
-            5. Torne a pergunta interessante e relevante aos interesses do usuário
+            5. Varie o tipo de pergunta (opinião, experiência, descrição, comparação)
+            6. Torne a pergunta interessante e envolvente
 
             NÍVEIS:
             - Iniciante: Perguntas muito simples, vocabulário básico, presente
@@ -349,13 +381,17 @@ export class TestModeFlow {
           },
           {
             role: 'user',
-            content: `Gere a pergunta ${this.perguntaAtual} personalizada para os interesses: ${interessesTexto}
+            content: `Gere a pergunta ${this.perguntaAtual} sobre o tópico: ${topicoEscolhido}
+
+            IMPORTANTE: Esta pergunta deve ser DIFERENTE de todas as anteriores.
+
+            Perguntas já feitas (EVITE repetir):
+            ${this.historico.map(h => `P${h.pergunta}: ${h.resposta.substring(0, 100)}...`).join('\n')}
 
             Nível inicial selecionado pelo usuário: ${this.nivelInicial}
             Nível atual da pergunta: ${this.nivelAtual}
 
-            Histórico das últimas respostas:
-            ${this.historico.slice(-2).map(h => `P${h.pergunta}: ${h.resposta}`).join('\n')}`
+            Crie uma pergunta completamente nova e única sobre "${topicoEscolhido}".`
           }
         ],
         temperature: 0.7,
@@ -370,14 +406,34 @@ export class TestModeFlow {
         this.threadId = completion.thread_id;
       }
 
+      // Adiciona a pergunta ao conjunto de perguntas feitas
+      this.perguntasFeitas.add(resposta.toLowerCase());
+
       return {
-        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\n${resposta.trim()}`
+        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n📝 **Tópico:** ${topicoEscolhido}\n\n${resposta.trim()}`
       };
 
     } catch (error) {
       console.error('Erro ao gerar pergunta:', error);
+
+      // Pergunta de fallback única baseada no tópico
+      const perguntasFallback = {
+        'hobbies e tempo livre': `Quais são seus hobbies favoritos e por quê?`,
+        'trabalho e carreira': `Descreva seu trabalho ideal em ${this.idioma}.`,
+        'família e relacionamentos': `Como é sua família? Conte sobre eles.`,
+        'viagens e lugares': `Qual lugar você gostaria de visitar e por quê?`,
+        'comida e culinária': `Qual é sua comida favorita? Descreva-a.`,
+        'tecnologia e internet': `Como a tecnologia mudou sua vida?`,
+        'esportes e exercícios': `Você pratica algum esporte? Conte sobre isso.`,
+        'música e entretenimento': `Que tipo de música você gosta? Por quê?`,
+        'estudos e educação': `Por que você está aprendendo ${this.idioma}?`,
+        'saúde e bem-estar': `O que você faz para manter-se saudável?`
+      };
+
+      const perguntaFallback = perguntasFallback[topicoEscolhido] || `Conte-me sobre ${topicoEscolhido} em sua vida.`;
+
       return {
-        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n\nConte-me sobre seus hobbies favoritos em ${this.idioma}.`
+        pergunta: `📚 **Pergunta ${this.perguntaAtual}/10** (Nível: ${this.nivelAtual})\n📝 **Tópico:** ${topicoEscolhido}\n\n${perguntaFallback}`
       };
     }
   }

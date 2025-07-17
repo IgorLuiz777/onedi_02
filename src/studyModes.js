@@ -394,8 +394,16 @@ async function processarAulaGuiadaAprimorada(estado, mensagem, usuarioBanco) {
   // Salva e reutiliza thread_id para manter a mesma conversa
   if (!estado.threadIdAulaGuiada) estado.threadIdAulaGuiada = null;
 
-  // Monta prompt reduzido
-  const systemPrompt = `Você é ${professor}, professor de ${idioma}. Aula: ${aulaAtual.topico}. Etapa: ${etapaAula}. Nível: ${nivel}. Responda de forma didática, clara e curta, sem repetir instruções já dadas. Corrija e avance para a próxima etapa se apropriado.`;
+  // Monta prompt reduzido com controle de repetição
+  const systemPrompt = `Você é ${professor}, professor de ${idioma}. Aula: ${aulaAtual.topico}. Etapa: ${etapaAula}. Nível: ${nivel}.
+
+  IMPORTANTE:
+  - Varie sempre suas perguntas e exercícios
+  - Nunca repita a mesma pergunta ou exercício
+  - Use tópicos e exemplos diferentes a cada interação
+  - Seja criativo e diversificado nas atividades
+
+  Responda de forma didática, clara e curta, sem repetir instruções já dadas. Corrija e avance para a próxima etapa se apropriado.`;
   const userPrompt = `Aluno: ${nome}\nMensagem: ${mensagem}\nEtapa: ${etapaAula}`;
 
   try {

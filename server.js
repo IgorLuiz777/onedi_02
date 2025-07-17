@@ -30,7 +30,9 @@ import {
   calcularNivel,
   normalizarTexto,
   verificarLimitesTempo,
-  enviarLembreteRecursos
+  enviarLembreteRecursos,
+  receberUsuarioComCompra,
+  detectarMensagemCompra
 } from './src/messageHandler.js';
 import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
 import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
@@ -104,6 +106,56 @@ wppconnect
       console.log(`📱 Mensagem de ${user}: ${message.body || '[ÁUDIO/MÍDIA]'}`);
       console.log(`📱 Tipo: ${message.type}, SelectedRowId: ${message.selectedRowId}`);
 
+      // Verifica se é uma mensagem de compra/assinatura
+      if (message.body && detectarMensagemCompra(message.body)) {
+        console.log(`💳 Mensagem de compra detectada de ${user}`);
+
+        let usuarioBanco = await consultarUsuario(numeroLimpo);
+
+        if (!usuarioBanco) {
+          // Cria usuário se não existir
+          const genero = await detectarGenero('Usuário');
+          usuarioBanco = await salvarUsuario(numeroLimpo, {
+            nome: 'Novo Aluno',
+            genero: genero,
+            idioma: null,
+            professor: genero === 'masculino' ? 'Isaias' : 'Rute',
+            etapa: 2.5,
+            nivel: 'básico',
+            pontuacao: 0,
+            streak_dias: 1,
+            aula_atual: 1,
+            status_plano: 'ativo',
+            teste_personalizado_concluido: true // Pula o teste para usuários pagos
+          });
+        } else {
+          // Atualiza status para ativo
+          await salvarUsuario(numeroLimpo, {
+            ...usuarioBanco,
+            status_plano: 'ativo',
+            teste_personalizado_concluido: true
+          });
+        }
+
+        // Inicializa estado
+        estados[user] = {
+          nome: usuarioBanco.nome,
+          genero: usuarioBanco.genero,
+          idioma: usuarioBanco.idioma,
+          professor: usuarioBanco.professor,
+          etapa: usuarioBanco.idioma ? 3 : 2.5,
+          nivel: usuarioBanco.nivel,
+          pontuacao: usuarioBanco.pontuacao,
+          streak: usuarioBanco.streak_dias,
+          aula_atual: usuarioBanco.aula_atual || 1,
+          etapaAulaAtual: 'EXPLICACAO_INICIAL',
+          statusPlano: 'ativo'
+        };
+
+        await receberUsuarioComCompra(client, user, estados[user]);
+        await client.stopTyping(user);
+        return;
+      }
       // Incrementa contador de mensagens para lembretes de menu
       if (!contadorMensagens[user]) contadorMensagens[user] = 0;
       contadorMensagens[user]++;

@@ -877,7 +877,38 @@ export async function enviarLembreteRecursos(client, user, contadorMensagens) {
 }
 
 export async function mostrarPersonalizarPlano(client, user) {
-  const textoPersonalizacao = `💎 **Personalize Seu Plano ONEDI**
+  const planos = [
+    {
+      title: '1 Idioma',
+      popular: false,
+      semestral: { price: 45.90, total: 275.40, priceId: 'price_1RZ0y8Q0KFUZUnTYBxIRz5Hu' },
+      anual: { price: 29.90, total: 358.80, discount: '35%', priceId: 'price_1RZ0msQ0KFUZUnTYtt57aJw9' },
+      maxLanguages: 1
+    },
+    {
+      title: '2 Idiomas',
+      popular: false,
+      semestral: { price: 84.90, total: 509.40, priceId: 'price_1RZ0yfQ0KFUZUnTYzXVWjTkG' },
+      anual: { price: 57.90, total: 694.80, discount: '32%', priceId: 'price_1RZ0pkQ0KFUZUnTYmQZRrFHM' },
+      maxLanguages: 2
+    },
+    {
+      title: '3 Idiomas',
+      popular: true,
+      semestral: { price: 109.90, total: 659.40, priceId: 'price_1RZ0zKQ0KFUZUnTYDQTzbNsW' },
+      anual: { price: 84.90, total: 1018.80, discount: '23%', priceId: 'price_1RZ0rfQ0KFUZUnTYD7hlBqAU' },
+      maxLanguages: 3
+    },
+    {
+      title: '4 Idiomas',
+      popular: false,
+      semestral: { price: 137.70, total: 826.20, priceId: 'price_1RZ0zfQ0KFUZUnTYZgYZNpDI' },
+      anual: { price: 99.90, total: 1198.80, discount: '27%', priceId: 'price_1RZ0uqQ0KFUZUnTYvk5VIwpZ' },
+      maxLanguages: 4
+    }
+  ];
+
+  let textoPersonalizacao = `💎 **Personalize Seu Plano ONEDI**
 
 🎯 **Crie o plano perfeito para suas necessidades!**
 
@@ -887,11 +918,16 @@ export async function mostrarPersonalizarPlano(client, user) {
 • 🇫🇷 **Francês** - A língua do amor e da cultura
 • 🇨🇳 **Mandarim** - Segundo idioma mais falado
 
-💰 **Preços por Quantidade:**
-• **1 Idioma** - R$ 29,90/mês
-• **2 Idiomas** - R$ 49,90/mês
-• **3 Idiomas** - R$ 69,90/mês
-• **4 Idiomas** - R$ 89,90/mês
+💰 **Preços Atualizados:**`;
+
+  planos.forEach(plano => {
+    const popularTag = plano.popular ? ' 🔥 **MAIS POPULAR**' : '';
+    textoPersonalizacao += `\n\n📦 **${plano.title}**${popularTag}
+💳 **Semestral:** R$ ${plano.semestral.price.toFixed(2)}/mês (Total: R$ ${plano.semestral.total.toFixed(2)})
+💎 **Anual:** R$ ${plano.anual.price.toFixed(2)}/mês (Total: R$ ${plano.anual.total.toFixed(2)}) - ${plano.anual.discount} OFF`;
+  });
+
+  textoPersonalizacao += `
 
 ✨ **Todos os Planos Incluem:**
 🤖 **IA Avançada Completa**
@@ -921,4 +957,69 @@ Entre em contato conosco informando:
 🚀 **Comece sua jornada personalizada hoje mesmo!**`;
 
   await client.sendText(user, textoPersonalizacao);
+}
+
+// Nova função para receber usuários que compraram
+export async function receberUsuarioComCompra(client, user, estado) {
+  const mensagemBoasVindas = `🎉 **PARABÉNS PELA SUA COMPRA!**
+
+🏆 **Bem-vindo à ONEDI - Sua Jornada de Idiomas Começa Agora!**
+
+✅ **Sua assinatura foi ativada com sucesso!**
+
+🚀 **Como usar a ONEDI:**
+
+📱 **Comandos Essenciais:**
+• **/menu** - Voltar ao menu principal a qualquer momento
+• **/idioma** - Trocar de idioma quando quiser
+• **/status** - Ver detalhes do seu plano
+• **/progresso** - Acompanhar seu desenvolvimento
+
+🎯 **Modos de Estudo Disponíveis:**
+📚 **Aula Guiada Interativa** - Sistema completo com IA
+💬 **Prática Livre** - Conversação natural
+👨‍🏫 **Modo Professor** - Explicações detalhadas
+📖 **Modo Vocabulário** - Memorização inteligente
+
+🤖 **Recursos de IA Inclusos:**
+🖼️ Geração de imagens educativas
+🎤 Análise de pronúncia
+🔊 Áudio HD automático
+📝 Correção inteligente
+🌐 Tradução contextual
+
+💡 **Dicas Importantes:**
+• Você pode enviar áudios - eu transcrevo automaticamente!
+• Digite **/menu** sempre que quiser mudar de atividade
+• Use **/idioma** para alternar entre seus idiomas
+• Estude um pouco todos os dias para manter sua sequência
+
+🎁 **Agora vamos começar!**
+
+👉 **Digite /menu para ver todas as opções ou escolha seu primeiro idioma abaixo:**`;
+
+  await client.sendText(user, mensagemBoasVindas);
+
+  // Mostra seleção de idioma automaticamente
+  const usuarioBanco = await import('./database.js').then(db => db.consultarUsuario(user.replace('@c.us', '')));
+  if (usuarioBanco) {
+    await mostrarSelecaoIdioma(client, user, usuarioBanco);
+  }
+}
+
+// Função para detectar mensagem de compra
+export function detectarMensagemCompra(mensagem) {
+  const indicadoresCompra = [
+    'acabei de comprar',
+    'comprei minha assinatura',
+    'quero começar minha aula',
+    'acabei de assinar',
+    'fiz a compra',
+    'assinatura ativa',
+    'plano ativado',
+    'pagamento aprovado'
+  ];
+
+  const mensagemLower = mensagem.toLowerCase();
+  return indicadoresCompra.some(indicador => mensagemLower.includes(indicador));
 }
