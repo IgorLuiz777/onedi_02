@@ -134,6 +134,15 @@ export async function verificarAcessoIdioma(telefone, idioma) {
 
   if (!usuario) return { acesso: false, motivo: 'Usuario não encontrado' };
 
+  // Converte nome completo do idioma para código
+  const mapeamentoIdiomaParaCodigo = {
+    'Inglês': 'ingles',
+    'Espanhol': 'espanhol',
+    'Francês': 'frances',
+    'Mandarim': 'mandarim'
+  };
+
+  const codigoIdioma = mapeamentoIdiomaParaCodigo[idioma] || idioma.toLowerCase();
   // Se está em teste gratuito
   if (usuario.status_plano === 'teste_gratuito') {
     if (usuario.tempo_restante_minutos <= 0) {
@@ -157,7 +166,7 @@ export async function verificarAcessoIdioma(telefone, idioma) {
     //   return { acesso: false, motivo: 'Plano expirado' };
     // }
 
-    if (!usuario.idiomas_disponiveis || !usuario.idiomas_disponiveis.includes(idioma)) {
+    if (!usuario.idiomas_disponiveis || !usuario.idiomas_disponiveis.includes(codigoIdioma)) {
       return { acesso: false, motivo: 'Idioma não incluído no seu plano' };
     }
 

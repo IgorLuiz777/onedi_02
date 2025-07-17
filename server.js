@@ -26,13 +26,15 @@ import {
   processarSelecaoIdioma,
   mostrarPersonalizarPlano,
   validarIdioma,
+  validarNivel,
   validarModoEstudo,
   calcularNivel,
   normalizarTexto,
   verificarLimitesTempo,
   enviarLembreteRecursos,
   receberUsuarioComCompra,
-  detectarMensagemCompra
+  detectarMensagemCompra,
+  mostrarSelecaoNivel
 } from './src/messageHandler.js';
 import { gerarTraducao, analisarAudioPronuncia } from './src/studyModes.js';
 import { gerarAudioProfessor, processarAudioAluno, analisarPronunciaIA } from './src/audioService.js';
@@ -440,27 +442,45 @@ wppconnect
           if (resultado && resultado.nivelSelecionado) {
             estado.nivel = resultado.nivelSelecionado;
             estado.aula_atual = resultado.aulaInicial;
-            estado.etapa = 3;
+            estado.etapa = 3; // Vai para seleção de modo de estudo
 
-            // Verifica se deve iniciar teste ou mostrar menu
-            if (resultado.iniciarTeste) {
-              // Inicia teste personalizado com nível ajustado
-              const sessaoTeste = iniciarTesteModo(usuarioBanco.id, estado.idioma, estado.nome, estado.genero);
-              sessaoTeste.setNivelInicial(resultado.nivelSelecionado); // Ajusta nível inicial do teste
-              const resultadoInicial = await sessaoTeste.iniciarTeste();
-
-              // Remove o setTimeout para evitar mensagem duplicada
-              await client.sendText(user, resultadoInicial.mensagem);
-            } else {
-              // Usuário já concluiu teste, mostra menu principal
-              await mostrarMenuPrincipal(client, user, estado);
-            }
+            // Sempre mostra menu principal após selecionar nível
+            await mostrarMenuPrincipal(client, user, estado);
           }
           await client.stopTyping(user);
           return;
         }
 
         if (estado.etapa === 3) {
+          // Primeiro, verifica se é seleção de nível
+          const nivelInput = message.selectedRowId || message.body.trim().toLowerCase();
+          const nivel = validarNivel ? validarNivel(nivelInput) : null;
+          if (nivel) {
+            // É uma seleção de nível
+            const resultado = await processarSelecaoNivel(client, user, usuarioBanco, message, estado.idioma);
+            if (resultado && resultado.nivelSelecionado) {
+              estado.nivel = resultado.nivelSelecionado;
+              estado.aula_atual = resultado.aulaInicial;
+              estado.etapa = 3; // Vai para seleção de modo de estudo
+              await mostrarMenuPrincipal(client, user, estado);
+            }
+            await client.stopTyping(user);
+            return;
+          }
+          // Se não for nível, verifica se é idioma
+          const idiomaInput = message.selectedRowId || message.body.trim();
+          const idioma = validarIdioma ? validarIdioma(idiomaInput) : null;
+          if (idioma) {
+            // É uma seleção de idioma, processa como tal
+            const resultado = await processarSelecaoIdioma(client, user, usuarioBanco, message);
+            if (resultado && resultado.idiomaSelecionado) {
+              estado.idioma = resultado.idiomaSelecionado;
+              await mostrarMenuPrincipal(client, user, estado);
+            }
+            await client.stopTyping(user);
+            return;
+          }
+          // Se não for nível nem idioma, processa como modo de estudo
           await processarSelecaoModoEstudo(client, user, estado, message);
           await client.stopTyping(user);
           return;
@@ -718,7 +738,7 @@ ${analise.pontuacao >= 80 ? '🎉 Excelente pronúncia!' :
           await client.sendText(user, revisao.mensagem);
           break;
         case 'verificar_nivel':
-          await client.sendText(user, `🎯 Seu nível atual: ${usuarioBanco.nivel.charAt(0).toUpperCase() + usuarioBanco.nivel.slice(1)}\n\n💡 **Comandos úteis:** /menu | /idioma`);
+          await mostrarSelecaoNivel(client, user, usuarioBanco, usuarioBanco.idioma);
           break;
         case 'ver_streak':
           await client.sendText(user, `🔥 Sua sequência atual: ${usuarioBanco.streak_dias} dias consecutivos!\n\n💡 **Comandos úteis:** /menu | /idioma`);

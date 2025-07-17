@@ -85,16 +85,26 @@ export function processarComandoEspecial(mensagem) {
 }
 
 export async function mostrarSelecaoIdioma(client, user, usuarioBanco) {
-  const { idiomas_selecionados, status_plano } = usuarioBanco;
+  const { idiomas_disponiveis, status_plano } = usuarioBanco;
 
   let idiomasDisponiveis = [];
 
   if (status_plano === 'teste_gratuito') {
     // No teste, pode escolher qualquer idioma, mas só um
     idiomasDisponiveis = ['Inglês', 'Espanhol', 'Francês', 'Mandarim'];
-  } else if (status_plano === 'ativo' && idiomas_selecionados && idiomas_selecionados.length > 0) {
+  } else if (status_plano === 'ativo' && idiomas_disponiveis && idiomas_disponiveis.length > 0) {
     // Plano ativo: apenas idiomas do plano
-    idiomasDisponiveis = idiomas_selecionados;
+    // Converte os códigos para nomes completos
+    const mapeamentoIdiomas = {
+      'ingles': 'Inglês',
+      'espanhol': 'Espanhol',
+      'frances': 'Francês',
+      'mandarim': 'Mandarim'
+    };
+
+    idiomasDisponiveis = idiomas_disponiveis
+      .map(codigo => mapeamentoIdiomas[codigo.toLowerCase()])
+      .filter(Boolean); // Remove valores undefined
   } else {
     // Fallback: todos os idiomas
     idiomasDisponiveis = ['Inglês', 'Espanhol', 'Francês', 'Mandarim'];
@@ -165,7 +175,7 @@ export async function processarSelecaoIdioma(client, user, usuarioBanco, message
 
   if (!idioma) {
     await client.sendText(user, '❌ Por favor, selecione um idioma válido clicando no botão.');
-    return false;
+    return { idiomaSelecionado: null, aguardandoSelecaoNivel: false };
   }
 
   // Verifica se o usuário tem acesso ao idioma
@@ -173,7 +183,7 @@ export async function processarSelecaoIdioma(client, user, usuarioBanco, message
 
   if (!acessoIdioma.acesso) {
     await client.sendText(user, `❌ **Acesso Negado**\n\n${acessoIdioma.motivo}\n\n💎 Digite **/personalizar** para configurar seu plano!`);
-    return false;
+    return { idiomaSelecionado: null, aguardandoSelecaoNivel: false };
   }
 
   // Salva o idioma selecionado
@@ -188,11 +198,18 @@ export async function processarSelecaoIdioma(client, user, usuarioBanco, message
     await definirIdiomaTestе(usuarioBanco.telefone, idioma);
   }
 
+  // Se o usuário já tem nível definido, não mostrar seleção de nível novamente
+  if (usuarioBanco.nivel) {
+    await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n✅ Seu nível atual é: ${usuarioBanco.nivel.charAt(0).toUpperCase() + usuarioBanco.nivel.slice(1)}\n\n🚀 Você já pode começar seus estudos!`);
+    return { idiomaSelecionado: idioma, aguardandoSelecaoNivel: false };
+  }
+
   await client.sendText(user, `🎉 **Idioma Selecionado:** ${idioma}\n\n🎯 **Agora vamos definir seu nível de conhecimento:**`);
 
   // Mostra menu de seleção de nível
   await mostrarSelecaoNivel(client, user, usuarioBanco, idioma);
 
+  // Retorna aguardando seleção de nível
   return { idiomaSelecionado: idioma, aguardandoSelecaoNivel: true };
 }
 
@@ -261,9 +278,7 @@ export async function processarSelecaoNivel(client, user, usuarioBanco, message,
   const aulaInicial = calcularAulaInicialPorNivel(nivel);
   await atualizarAulaAtual(usuarioBanco.telefone, aulaInicial);
 
-  // Verifica se já concluiu o teste antes de prosseguir
-  if (usuarioBanco.teste_personalizado_concluido) {
-    await client.sendText(user, `✅ **Nível Selecionado:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+  await client.sendText(user, `✅ **Nível Selecionado:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
 
 🎯 **Aula Inicial:** ${aulaInicial}
 
@@ -271,18 +286,7 @@ export async function processarSelecaoNivel(client, user, usuarioBanco, message,
 
 💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
 
-    return { nivelSelecionado: nivel, aulaInicial: aulaInicial };
-  } else {
-    await client.sendText(user, `✅ **Nível Selecionado:** ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}
-
-🧪 **Iniciando seu Teste Personalizado adaptado ao seu nível...**
-
-🎯 **Suas perguntas serão ajustadas para o nível ${nivel}!**
-
-💡 **Dica:** Digite **/idioma** a qualquer momento para trocar de idioma.`);
-
-    return { nivelSelecionado: nivel, aulaInicial: aulaInicial, iniciarTeste: true };
-  }
+  return { nivelSelecionado: nivel, aulaInicial: aulaInicial };
 }
 
 export function validarNivel(nivelInput) {
@@ -677,6 +681,7 @@ export function validarIdioma(idiomaInput) {
   const idiomasValidos = {
     'ingles': 'Inglês',
     'inglês': 'Inglês',
+    'inglês': 'Inglês',
     '🇺🇸 ingles': 'Inglês',
     '🇺🇸 inglês': 'Inglês',
     '🇺🇸 ingles o idioma mais falado no mundo': 'Inglês',
@@ -684,15 +689,22 @@ export function validarIdioma(idiomaInput) {
     'espanhol': 'Espanhol',
     '🇪🇸 espanhol': 'Espanhol',
     '🇪🇸 espanhol idioma oficial de 20 países': 'Espanhol',
+    '🇪🇸 espanhol o idioma oficial de 20 países': 'Espanhol',
     'frances': 'Francês',
     'francês': 'Francês',
     '🇫🇷 frances': 'Francês',
     '🇫🇷 francês': 'Francês',
     '🇫🇷 frances a lingua do amor e da cultura': 'Francês',
     '🇫🇷 francês a lingua do amor e da cultura': 'Francês',
+    '🇫🇷 francês a língua do amor e da cultura': 'Francês',
     'mandarim': 'Mandarim',
     '🇨🇳 mandarim': 'Mandarim',
-    '🇨🇳 mandarim segundo idioma mais falado': 'Mandarim'
+    '🇨🇳 mandarim segundo idioma mais falado': 'Mandarim',
+    // Adiciona variações que podem aparecer nos logs
+    '🇺🇸 inglês\no idioma mais falado no mundo': 'Inglês',
+    '🇪🇸 espanhol\no idioma oficial de 20 países': 'Espanhol',
+    '🇫🇷 francês\na língua do amor e da cultura': 'Francês',
+    '🇨🇳 mandarim\nsegundo idioma mais falado': 'Mandarim'
   };
 
   let idiomaNormalizado = normalizarTexto(idiomaInput.replace(/\n/g, ' ').replace(/ +/g, ' '));
@@ -1001,7 +1013,8 @@ export async function receberUsuarioComCompra(client, user, estado) {
   await client.sendText(user, mensagemBoasVindas);
 
   // Mostra seleção de idioma automaticamente
-  const usuarioBanco = await import('./database.js').then(db => db.consultarUsuario(user.replace('@c.us', '')));
+  const numeroLimpo = user.replace('@c.us', '');
+  const usuarioBanco = await import('./database.js').then(db => db.consultarUsuario(numeroLimpo));
   if (usuarioBanco) {
     await mostrarSelecaoIdioma(client, user, usuarioBanco);
   }
